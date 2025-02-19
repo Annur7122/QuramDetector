@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
@@ -17,6 +18,12 @@ class User(db.Model):
     history = db.relationship('ScanHistory', backref='user', lazy=True)
     reviews = db.relationship('Review', backref='user', lazy=True)
     notifications = db.relationship('Notification', backref='user', lazy=True)
+
+    def set_password(self, password):
+        self.password = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password, password)
 
 # Категория продукта (для поиска альтернатив)
 class Description(db.Model):
@@ -71,3 +78,17 @@ class Notification(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     news_description = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class BaseModel(db.Model):
+    __abstract__ = True
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class Ingredient(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), unique=True, nullable=False)
+    type = db.Column(db.String(10), nullable=False)  # 'halal' или 'haram'
+
+
+
