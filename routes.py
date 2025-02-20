@@ -62,3 +62,17 @@ def get_product(product_id):
         "image": product.image,
         "ingredients": product.ingredients
     }), 200
+
+
+@routes.route('/products', methods=['GET'])
+def get_all_products():
+    products = Product.query.all()
+
+    product_list = [{
+        "id": product.id,
+        "name": product.name,
+        "image": product.image,
+        "ingredients": product.ingredients
+    } for product in products]
+
+    return jsonify({"products": product_list}), 200
