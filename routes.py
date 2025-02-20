@@ -1,9 +1,12 @@
+from operator import or_
+
 from flask import Blueprint, request, jsonify
+from sqlalchemy.orm import joinedload
 from werkzeug.utils import secure_filename
 import os
 from check import check_halal_status
 from image_processor import extract_text_from_image
-from models import db, Product
+from models import db, Product, Description
 from flask_jwt_extended import jwt_required
 
 
@@ -111,3 +114,38 @@ def get_all_products():
             "products": product_list
         }
     }), 200
+
+
+@routes.route('/search', methods=['GET'])
+def search_products():
+    query = request.args.get('q', '').strip()
+
+    if not query:
+        return jsonify({"status": "error", "message": "Введите поисковый запрос"}), 400
+
+
+
+
+    try:
+        products = db.session.query(Product).join(Description).filter(
+            or_(
+                Product.name.ilike(f"%{query}%"),
+                Description.name.ilike(f"%{query}%")
+            )
+        ).options(joinedload(Product.description)).all()
+
+        if not products:
+            return jsonify({"status": "error", "message": "Продукт не найден"}), 404
+
+        product_list = [{
+            "id": p.id,
+            "name": p.name,
+            "image": p.image,
+            "ingredients": p.ingredients,
+            "description": p.description.name if p.description else None
+        } for p in products]
+
+        return jsonify({"status": "success", "data": {"products": product_list}}), 200
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Ошибка запроса: {str(e)}"}), 500
