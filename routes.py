@@ -1,10 +1,11 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.utils import secure_filename
 import os
-
 from check import check_halal_status
 from image_processor import extract_text_from_image
 from models import db, Product
+from flask_jwt_extended import jwt_required
+
 
 routes = Blueprint('routes', __name__)
 
@@ -67,6 +68,7 @@ def process_images():
 
 
 @routes.route('/test', methods=['GET'])
+@jwt_required()
 def test():
     return jsonify({"status": "success", "data": {"test": "test1"}}), 200
 
