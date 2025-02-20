@@ -20,15 +20,30 @@ def allowed_file(filename):
 @routes.route('/process-images', methods=['POST'])
 def process_images():
     if 'file' not in request.files:
-        return jsonify({"error": "Файл не найден"}), 400
+        return jsonify({
+            "status": "error",
+            "message": "Файл не найден",
+            "code": 400
+        }), 400
+
 
     file = request.files['file']
 
     if file.filename == '':
-        return jsonify({"error": "Файл не выбран"}), 400
+        return jsonify({
+            "status": "error",
+            "message": "Файл не выбран",
+            "code": 400
+        }), 400
+
 
     if not allowed_file(file.filename):
-        return jsonify({"error": "Неверный формат файла"}), 400
+        return jsonify({
+            "status": "error",
+            "message": "Неверный формат файла",
+            "code": 400
+        }), 400
+
 
     filename = secure_filename(file.filename)
     filepath = os.path.join(UPLOAD_FOLDER, filename)
@@ -39,28 +54,41 @@ def process_images():
     status, found_ingredients = check_halal_status(extracted_text)
 
     return jsonify({
+        "status": "success",
         "message": "Файл успешно загружен",
-        "file_path": filepath,
-        "extracted_text": extracted_text,
-        "status": status,
-        "found_ingredients": found_ingredients
+        "data": {
+            "file_path": filepath,
+            "extracted_text": extracted_text,
+            "status": status,
+            "found_ingredients": found_ingredients
+        }
     }), 200
+
+
 
 @routes.route('/test', methods=['GET'])
 def test():
-    return {'test': 'test1'}
+    return jsonify({"status": "success", "data": {"test": "test1"}}), 200
 
 @routes.route('/product/<int:product_id>', methods=['GET'])
 def get_product(product_id):
     product = Product.query.get(product_id)
     if not product:
-        return jsonify({"error": "Продукт не найден"}), 404
+        return jsonify({
+            "status": "error",
+            "message": f"Продукт с ID {product_id} не найден",
+            "code": 404
+        }), 404
+
 
     return jsonify({
-        "id": product.id,
-        "name": product.name,
-        "image": product.image,
-        "ingredients": product.ingredients
+        "status": "success",
+        "data": {
+            "id": product.id,
+            "name": product.name,
+            "image": product.image,
+            "ingredients": product.ingredients
+        }
     }), 200
 
 
@@ -75,4 +103,9 @@ def get_all_products():
         "ingredients": product.ingredients
     } for product in products]
 
-    return jsonify({"products": product_list}), 200
+    return jsonify({
+        "status": "success",
+        "data": {
+            "products": product_list
+        }
+    }), 200
