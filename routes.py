@@ -6,8 +6,9 @@ from werkzeug.utils import secure_filename
 import os
 from check import check_halal_status
 from image_processor import extract_text_from_image
-from models import db, Product, Description
-from flask_jwt_extended import jwt_required
+from models import db, Product, Description, Review, User
+from flask_jwt_extended import jwt_required,get_jwt_identity
+
 
 
 routes = Blueprint('routes', __name__)
@@ -85,6 +86,17 @@ def get_product(product_id):
             "code": 404
         }), 404
 
+    product.count += 1  # Увеличиваем счётчик
+    db.session.commit()
+
+    reviews = Review.query.filter_by(product_id=product.id).all()
+
+    review_list = [{
+        "id": r.id,
+        "user_id": r.user_id,
+        "review_description": r.review_description,
+        "stars": r.stars
+    } for r in reviews]
 
     return jsonify({
         "status": "success",
@@ -92,7 +104,8 @@ def get_product(product_id):
             "id": product.id,
             "name": product.name,
             "image": product.image,
-            "ingredients": product.ingredients
+            "ingredients": product.ingredients,
+            "reviews": review_list
         }
     }), 200
 
@@ -108,12 +121,34 @@ def get_all_products():
         "ingredients": product.ingredients
     } for product in products]
 
+
+
     return jsonify({
         "status": "success",
         "data": {
             "products": product_list
         }
     }), 200
+
+@routes.route('/top-products', methods=['GET'])
+def get_top_products():
+    top_products = Product.query.order_by(Product.count.desc()).limit(3).all()
+
+    product_list = [{
+        "id": p.id,
+        "name": p.name,
+        "image": p.image,
+        "ingredients": p.ingredients,
+        "count": p.count
+    } for p in top_products]
+
+    return jsonify({
+        "status": "success",
+        "data": {
+            "products": product_list
+        }
+    }), 200
+
 
 
 @routes.route('/search', methods=['GET'])
@@ -149,3 +184,45 @@ def search_products():
 
     except Exception as e:
         return jsonify({"status": "error", "message": f"Ошибка запроса: {str(e)}"}), 500
+
+
+@routes.route('/reviews', methods=['POST'])
+@jwt_required()
+def add_review():
+    current_user_id = get_jwt_identity()  # Получаем ID залогиненного пользователя
+    user = User.query.get(current_user_id)
+
+    if not user:
+        return jsonify({"status": "error", "message": "Пользователь не найден"}), 401
+
+    data = request.get_json()
+    product_id = data.get("product_id")
+    review_description = data.get("review_description", "")
+    stars = data.get("stars")
+
+    if not all([product_id, stars]):
+        return jsonify({"status": "error", "message": "product_id и stars обязательны"}), 400
+
+    product = Product.query.get(product_id)
+    if not product:
+        return jsonify({"status": "error", "message": "Продукт не найден"}), 404
+
+    new_review = Review(
+        user_id=user.id,  # Берем user_id из JWT токена
+        product_id=product_id,
+        review_description=review_description,
+        stars=stars
+    )
+    db.session.add(new_review)
+    db.session.commit()
+
+    return jsonify({
+        "status": "success",
+        "message": "Отзыв добавлен",
+        "data": {
+            "user_id": user.id,
+            "user_name": user.name,
+            "review_description": review_description,
+            "stars": stars
+        }
+    }), 201

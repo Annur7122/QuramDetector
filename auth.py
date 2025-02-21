@@ -6,6 +6,7 @@ from models import db, User
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
+
 auth = Blueprint('auth', __name__)
 bcrypt = Bcrypt()
 

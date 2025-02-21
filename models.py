@@ -39,6 +39,7 @@ class Product(db.Model):
     ingredients = db.Column(db.Text, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     description_id = db.Column(db.Integer, db.ForeignKey('description.id'), nullable=True)
+    count = db.Column(db.Integer, default=0)
 
     reviews = db.relationship('Review', backref='product', lazy=True)
     scan_result = db.relationship('ScanResult', backref='product', uselist=False)
@@ -66,7 +67,7 @@ class Favourite(db.Model):
 
 # Отзывы
 class Review(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
     review_description = db.Column(db.Text, nullable=True)
