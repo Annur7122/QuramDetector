@@ -6,7 +6,7 @@ from werkzeug.utils import secure_filename
 import os
 from check import check_halal_status
 from image_processor import extract_text_from_image
-from models import db, Product, Description, Review, User
+from models import db, Product, Description, Review, User, Favourite
 from flask_jwt_extended import jwt_required,get_jwt_identity
 
 
@@ -226,3 +226,53 @@ def add_review():
             "stars": stars
         }
     }), 201
+
+@routes.route('/favourites/toggle', methods=['POST'])
+@jwt_required()
+def toggle_favourite():
+    """Добавить или удалить продукт из избранного"""
+    user_id = get_jwt_identity()  # Получаем ID текущего пользователя
+    data = request.get_json()
+    product_id = data.get("product_id")
+
+    if not product_id:
+        return jsonify({"status": "error", "message": "product_id обязателен"}), 400
+
+    product = Product.query.get(product_id)
+    if not product:
+        return jsonify({"status": "error", "message": "Продукт не найден"}), 404
+
+    # Проверяем, есть ли уже продукт в избранном
+    favourite = Favourite.query.filter_by(user_id=user_id, product_id=product_id).first()
+
+    if favourite:
+        # Если продукт уже в избранном, удаляем его
+        db.session.delete(favourite)
+        db.session.commit()
+        return jsonify({"status": "success", "message": "Продукт удалён из избранного"}), 200
+    else:
+        # Если продукта нет в избранном, добавляем его
+        new_fav = Favourite(user_id=user_id, product_id=product_id)
+        db.session.add(new_fav)
+        db.session.commit()
+        return jsonify({"status": "success", "message": "Продукт добавлен в избранное"}), 201
+
+@routes.route('/favourites', methods=['GET'])
+@jwt_required()
+def get_favourites():
+    """Получить список избранных продуктов пользователя"""
+    user_id = get_jwt_identity()
+
+    favourites = (
+        db.session.query(Product)
+        .join(Favourite, Product.id == Favourite.product_id)
+        .filter(Favourite.user_id == user_id)
+        .all()
+    )
+
+    products_list = [
+        {"id": p.id, "name": p.name, "image": p.image, "ingredients": p.ingredients}
+        for p in favourites
+    ]
+
+    return jsonify({"status": "success", "data": {"favourites": products_list}}), 200
