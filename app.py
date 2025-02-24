@@ -17,7 +17,7 @@ app = Flask(__name__)
 CORS(app)
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:user@localhost/QuramDatabase'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://quramdb2:9P3RoNtzfA08JVXClmUgTXE1fH3D7Ys8@dpg-cuua60qj1k6c73dojbt0-a.oregon-postgres.render.com/quramdb2'
 app.debug = True
 
 app.config['JWT_SECRET_KEY'] = 'your_secret_key'  # Секретный ключ для подписи JWT
