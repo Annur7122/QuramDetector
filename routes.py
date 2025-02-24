@@ -9,7 +9,7 @@ from image_processor import extract_text_from_image
 from models import db, Product, Description, Review, User, Favourite
 from flask_jwt_extended import jwt_required,get_jwt_identity
 import base64
-import openai
+#import openai
 
 
 
