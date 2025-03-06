@@ -1,12 +1,18 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from utils import admin_required
 from models import db, Notification, User
+
 
 notification_routes = Blueprint('notification_routes', __name__)
 
 # **1. Отправка уведомления (админский эндпоинт)**
 @notification_routes.route('/send', methods=['POST'])
 @jwt_required()
+@admin_required
 def send_notification():
     data = request.get_json()
     user_id = data.get("user_id")  # Если None, то уведомление для всех
@@ -49,6 +55,7 @@ def get_notifications():
 # **3. Получение всех уведомлений (для админа)**
 @notification_routes.route('/all', methods=['GET'])
 @jwt_required()
+@admin_required
 def get_all_notifications():
     notifications = Notification.query.order_by(Notification.created_at.desc()).all()
 
