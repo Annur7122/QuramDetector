@@ -4,6 +4,7 @@ from flask import Flask
 from flask_cors import CORS
 from flask_migrate import Migrate
 from models import db
+from notification_routes import notification_routes
 from routes import routes
 from flask_jwt_extended import JWTManager
 # Подключаем Blueprint с аутентификацией
@@ -12,6 +13,7 @@ from flask_jwt_extended import jwt_required
 from flask import request, jsonify
 from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
 from functools import wraps
+
 
 app = Flask(__name__)
 CORS(app)
@@ -25,6 +27,7 @@ jwt = JWTManager(app)
 
 
 app.register_blueprint(auth, url_prefix='/auth')
+app.register_blueprint(notification_routes, url_prefix='/notifications')
 
 db.init_app(app)
 migrate = Migrate(app, db)

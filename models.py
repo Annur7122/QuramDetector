@@ -79,6 +79,7 @@ class Notification(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     news_description = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_global = db.Column(db.Boolean, default=False)
 
 class BaseModel(db.Model):
     __abstract__ = True
