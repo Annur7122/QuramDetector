@@ -9,6 +9,9 @@ from image_processor import extract_text_from_image
 from models import db, Product, Description, Review, User, Favourite
 from flask_jwt_extended import jwt_required,get_jwt_identity
 import base64
+
+from utils import get_alternative_products
+
 #import openai
 
 
@@ -156,6 +159,19 @@ def get_product(product_id):
             "reviews": review_list
         }
     }), 200
+
+
+@routes.route("/product/<int:product_id>/alternatives", methods=["GET"])
+@jwt_required()
+def get_alternative_products_endpoint(product_id):
+    """Эндпоинт для получения альтернативных продуктов"""
+    product = Product.query.get(product_id)
+
+    if not product:
+        return jsonify({"status": "error", "message": "Продукт не найден"}), 404
+
+    alternatives = get_alternative_products(product)
+    return jsonify({"status": "success", "data": alternatives}), 200
 
 
 @routes.route('/products', methods=['GET'])
