@@ -121,6 +121,60 @@ def process_images():
     except Exception as e:
         return jsonify({"status": "error", "message": f"Ошибка обработки изображения: {str(e)}"}), 500
 
+# testprocess-images for frontend
+@routes.route("/process-images1", methods=["POST"])
+def process_images1():
+    """Extract text from an image using GPT-4o OCR and check if ingredients are Halal/Haram."""
+
+    # Step 1: Validate File
+    if "file" not in request.files:
+        return jsonify({"status": "error", "message": "Файл не найден", "code": 400}), 400
+
+    file = request.files["file"]
+
+    if file.filename == "":
+        return jsonify({"status": "error", "message": "Файл не выбран", "code": 400}), 400
+
+    if not allowed_file(file.filename):
+        return jsonify({"status": "error", "message": "Неверный формат файла", "code": 400}), 400
+
+    # Step 2: Save File Securely
+    filename = secure_filename(file.filename)
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(filepath)
+
+    try:
+        # Step 3: Convert Image to Base64 for OpenAI
+        file.seek(0)  # Reset file pointer to beginning
+        img_b64_str = base64.b64encode(file.read()).decode("utf-8")
+        img_type = file.content_type  # Get content type (e.g., "image/png")
+
+        # Step 5: Parse Response
+
+        ingredients_list = ["вода", "сахар", "диоксид углерода", "карамельный краситель E150d", "ортофосфорная кислота", "натриевый бензоат", "натуральные ароматизаторы", "кофеин"]
+
+        # Step 6: Check Halal Status (Fixing the Issue)
+        halal_status_result = check_halal_status(ingredients_list)
+
+        # Step 7: Return Processed Response
+        return jsonify({
+            "status": "success",
+            "message": "Файл успешно загружен",
+            "data": {
+                "file_path": filepath,
+                "extracted_text": ingredients_list,
+                "status": halal_status_result["status"],
+                # 🔥 FIX: This now correctly shows "Харам", "Халал", or "Подозрительно"
+                "found_ingredients": halal_status_result["found_ingredients"]
+                # 🔥 FIX: Correctly lists the found harmful ingredients
+            }
+        }), 200
+
+    except openai.OpenAIError as api_error:
+        return jsonify({"status": "error", "message": f"Ошибка API OpenAI: {str(api_error)}"}), 500
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Ошибка обработки изображения: {str(e)}"}), 500
 
 @routes.route('/test', methods=['GET'])
 @jwt_required()

@@ -40,6 +40,8 @@ class Product(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     description_id = db.Column(db.Integer, db.ForeignKey('description.id'), nullable=True)
     count = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(50), nullable=False, default="Неизвестно")  # "Харам", "Халал" или "Неизвестно"
+    haram_ingredients = db.Column(db.Text, nullable=True)  # Харамные ингредиенты через запятую
 
     reviews = db.relationship('Review', backref='product', lazy=True)
     scan_result = db.relationship('ScanResult', backref='product', uselist=False)
