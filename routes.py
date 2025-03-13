@@ -9,6 +9,7 @@ from image_processor import extract_text_from_image
 from models import db, Product, Description, Review, User, Favourite
 from flask_jwt_extended import jwt_required,get_jwt_identity
 import base64
+import openai
 
 from utils import get_alternative_products
 
@@ -27,7 +28,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = os.getenv("OPENAI_API_KEY")
  
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
