@@ -40,7 +40,7 @@ class Product(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     description_id = db.Column(db.Integer, db.ForeignKey('description.id'), nullable=True)
     count = db.Column(db.Integer, default=0)
-    status = db.Column(db.String(50), nullable=False, default="Неизвестно")  # "Харам", "Халал" или "Неизвестно"
+    status = db.Column(db.String(50), nullable=True, default="Неизвестно",server_default='pending')  # "Харам", "Халал" или "Неизвестно"
     haram_ingredients = db.Column(db.Text, nullable=True)  # Харамные ингредиенты через запятую
 
     reviews = db.relationship('Review', backref='product', lazy=True)
@@ -55,10 +55,15 @@ class ScanResult(db.Model):
 # История проверок
 class ScanHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
-    scan_date = db.Column(db.DateTime, default=datetime.utcnow)
-    result = db.Column(db.String(10), nullable=False)  # ✅ / ⚠️ / ❌
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Кто сканировал
+    product_name = db.Column(db.String(200), nullable=False)  # Название, если продукта еще нет в БД
+    image = db.Column(db.String(300), nullable=True)  # Фото упаковки или состава
+    ingredients = db.Column(db.Text, nullable=True)  # Извлеченные ингредиенты
+    scan_date = db.Column(db.DateTime, default=datetime.utcnow)  # Дата сканирования
+    status = db.Column(db.String(50), nullable=False)  # "Халал", "Харам", "Подозрительно"
+    haram_ingredients = db.Column(db.Text, nullable=True)  # Найденные харамные ингредиенты
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=True)  # Если продукт уже есть в базе
+
 
 # Избранное
 class Favourite(db.Model):
