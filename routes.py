@@ -185,6 +185,21 @@ def process_images1():
     except Exception as e:
         return jsonify({"status": "error", "message": f"Ошибка обработки изображения: {str(e)}"}), 500
 
+
+@routes.route("/scan-history", methods=["GET"])
+def get_scan_history():
+    scans = ScanHistory.query.filter_by(user_id=get_jwt_identity()).order_by(ScanHistory.scan_date.desc()).all()
+
+    scan_data = [{
+        "id": scan.id,
+        "product_name": scan.product_name,
+        "status": scan.status,
+        "haram_ingredients": scan.haram_ingredients,
+        "scan_date": scan.scan_date.strftime('%Y-%m-%d %H:%M:%S')
+    } for scan in scans]
+
+    return jsonify({"status": "success", "history": scan_data}), 200
+
 @routes.route('/test', methods=['GET'])
 @jwt_required()
 def test():

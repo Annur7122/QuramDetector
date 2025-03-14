@@ -63,7 +63,7 @@ class ScanHistory(db.Model):
     status = db.Column(db.String(50), nullable=False)  # "Халал", "Харам", "Подозрительно"
     haram_ingredients = db.Column(db.Text, nullable=True)  # Найденные харамные ингредиенты
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=True)  # Если продукт уже есть в базе
-
+    is_processed = db.Column(db.Boolean, default=False)
 
 # Избранное
 class Favourite(db.Model):
