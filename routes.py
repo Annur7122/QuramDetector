@@ -1,21 +1,22 @@
+import re
 from operator import or_
 import ast
 from flask import Blueprint, request, jsonify
 from sqlalchemy.orm import joinedload
 from werkzeug.utils import secure_filename
 import os
+import json
 from check import check_halal_status
 from image_processor import extract_text_from_image
 from models import db, Product, Description, Review, User, Favourite
 from flask_jwt_extended import jwt_required,get_jwt_identity
 import base64
-import openai
+import google.generativeai as genai
+from dotenv import load_dotenv
 
 from utils import get_alternative_products
 
-#import openai
-
-
+load_dotenv()
 
 routes = Blueprint('routes', __name__)
 
@@ -28,8 +29,9 @@ if not os.path.exists(UPLOAD_FOLDER):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
- 
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+model = genai.GenerativeModel('gemini-1.5-flash') #using gemini-pro-vision to send images.
+
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
@@ -43,84 +45,94 @@ def allowed_file(filename):
 
 @routes.route("/process-images", methods=["POST"])
 def process_images():
-    """Extract text from an image using GPT-4o OCR and check if ingredients are Halal/Haram."""
-    
-    # Step 1: Validate File
-    if "file" not in request.files:
-        return jsonify({"status": "error", "message": "Файл не найден", "code": 400}), 400
-    
-    file = request.files["file"]
+    """Extracts text from an image using Gemini API and checks ingredients for Halal compliance."""
 
-    if file.filename == "":
+    # Step 1: Validate file
+    if 'file' not in request.files:
+        return jsonify({"status": "error", "message": "Файл не найден", "code": 400}), 400
+
+    file = request.files['file']
+
+    if file.filename == '':
         return jsonify({"status": "error", "message": "Файл не выбран", "code": 400}), 400
 
     if not allowed_file(file.filename):
         return jsonify({"status": "error", "message": "Неверный формат файла", "code": 400}), 400
 
-    # Step 2: Save File Securely
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
-    file.save(filepath)
+    # Step 2: Save file securely
+    try:
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(filepath)
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Ошибка сохранения файла: {str(e)}", "code": 500}), 500
 
     try:
-        # Step 3: Convert Image to Base64 for OpenAI
-        file.seek(0)  # Reset file pointer to beginning
-        img_b64_str = base64.b64encode(file.read()).decode("utf-8")
-        img_type = file.content_type  # Get content type (e.g., "image/png")
+        # Step 3: Convert image to Base64 for Gemini
+        with open(filepath, "rb") as image_file:
+            img_b64_str = base64.b64encode(image_file.read()).decode("utf-8")
+        img_type = file.content_type
 
-        # Step 4: Send Image to GPT-4o for OCR
-        response = openai.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": (
-                                "Ты OCR-ассистент, твоя задача – извлекать состав продукта из текста на изображении. "
-                                "Неважно, на каком языке состав указан. Твоя цель:  \n\n"
-                                "1. Извлечь все ингредиенты и добавки (например: \"вода\", \"сок манго\", \"кислота\", \"сукралоза\", \"E102\", \"E110\").  \n"
-                                "2. Если видишь элементы вида \"E100\", \"E121\" и любые другие добавки с префиксом E, выделяй их отдельно как индивидуальные элементы.  \n"
-                                "3. Всегда возвращай результат в строго формате Python-списка (list), например:    \n"
-                                "   [\"вода\", \"сок манго\", \"кислота\", \"сукралоза\", \"пищевые красители\", \"E102\", \"E110\"]  \n"
-                                "4. Никакой другой формы ответа, только список. Без лишнего текста, пояснений или форматов."
-                            )
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:{img_type};base64,{img_b64_str}"}
-                        }
-                    ]
-                }
-            ],
-            temperature=0
-        )
+        # Step 4: Send image to Gemini for OCR and ingredient extraction
+        response = model.generate_content([
+            "Ты OCR-ассистент, твоя задача – извлекать состав продукта из текста на изображении. "
+            "Неважно, на каком языке состав указан. Твоя цель:  \n\n"
+            "1. Извлечь все ингредиенты и добавки (например: \"вода\", \"сок манго\", \"кислота\", \"сукралоза\", \"E102\", \"E110\").  \n"
+            "2. Если видишь элементы вида \"E100\", \"E121\" и любые другие добавки с префиксом E, выделяй их отдельно как индивидуальные элементы.  \n"
+            "3. Всегда возвращай результат в строго формате JSON-массива (list), например:    \n"
+            "   [\"вода\", \"сок манго\", \"кислота\", \"сукралоза\", \"пищевые красители\", \"E102\", \"E110\"]  \n"
+            "4. Никакой другой формы ответа, только JSON-массив.",
+            {
+                "mime_type": file.content_type,
+                "data": img_b64_str
+            }
+        ])
 
-        # Step 5: Parse Response
-        extracted_text = response.choices[0].message.content.strip()
-        ingredients_list = ast.literal_eval(extracted_text)  # Convert extracted text into Python list
-        
-        # Step 6: Check Halal Status (Fixing the Issue)
+        # Step 4: Parsing the response from Gemini
+        extracted_text = response.text.strip()
+
+        # Extract JSON using regex
+        match = re.search(r'\[.*\]', extracted_text, re.DOTALL)
+        if match:
+            json_str = match.group(0)
+        else:
+            return jsonify({
+                "status": "error",
+                "message": f"Ошибка извлечения JSON: {extracted_text}",
+                "code": 500
+            }), 500
+
+        # Safe JSON parsing
+        try:
+            ingredients_list = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            return jsonify({
+                "status": "error",
+                "message": f"Ошибка обработки JSON: {extracted_text}, Ошибка: {e}",
+                "code": 500
+            }), 500
+
+        # Step 6: Check Halal status
         halal_status_result = check_halal_status(ingredients_list)
 
-        # Step 7: Return Processed Response
+        # Step 7: Return processed response
         return jsonify({
             "status": "success",
             "message": "Файл успешно загружен",
             "data": {
                 "file_path": filepath,
                 "extracted_text": ingredients_list,
-                "status": halal_status_result["status"],  # 🔥 FIX: This now correctly shows "Харам", "Халал", or "Подозрительно"
-                "found_ingredients": halal_status_result["found_ingredients"]  # 🔥 FIX: Correctly lists the found harmful ingredients
+                "status": halal_status_result["status"],
+                "found_ingredients": halal_status_result["found_ingredients"]
             }
         }), 200
 
-    except openai.OpenAIError as api_error:
-        return jsonify({"status": "error", "message": f"Ошибка API OpenAI: {str(api_error)}"}), 500
-
     except Exception as e:
-        return jsonify({"status": "error", "message": f"Ошибка обработки изображения: {str(e)}"}), 500
+        return jsonify({
+            "status": "error",
+            "message": f"Ошибка обработки изображения: {str(e)}",
+            "code": 500
+        }), 500
 
 
 @routes.route('/test', methods=['GET'])
