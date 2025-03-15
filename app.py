@@ -3,6 +3,8 @@ import traceback
 from flask import Flask
 from flask_cors import CORS
 from flask_migrate import Migrate
+
+from admin_routes import admin_routes
 from models import db, User
 from routes import routes
 from flask_jwt_extended import JWTManager
@@ -24,6 +26,7 @@ app.config['JWT_SECRET_KEY'] = 'your_secret_key'  # Секретный ключ 
 jwt = JWTManager(app)
 
 app.register_blueprint(auth, url_prefix='/auth')
+app.register_blueprint(admin_routes)
 
 from notification_routes import notification_routes
 app.register_blueprint(notification_routes, url_prefix='/notifications')

@@ -1,4 +1,3 @@
-import re
 from operator import or_
 import ast
 from flask import Blueprint, request, jsonify
@@ -8,7 +7,7 @@ import os
 import json
 from check import check_halal_status
 from image_processor import extract_text_from_image
-from models import db, Product, Description, Review, User, Favourite
+from models import db, Product, Description, Review, User, Favourite, ScanHistory
 from flask_jwt_extended import jwt_required,get_jwt_identity
 import base64
 import google.generativeai as genai
@@ -45,10 +44,10 @@ def allowed_file(filename):
 
 @routes.route("/process-images", methods=["POST"])
 def process_images():
-    """Extracts text from an image using Gemini API and checks ingredients for Halal compliance."""
-
-    # Step 1: Validate file
-    if 'file' not in request.files:
+    """Extract text from an image using GPT-4o OCR and check if ingredients are Halal/Haram."""
+    
+    # Step 1: Validate File
+    if "file" not in request.files:
         return jsonify({"status": "error", "message": "Файл не найден", "code": 400}), 400
 
     file = request.files['file']
@@ -59,7 +58,7 @@ def process_images():
     if not allowed_file(file.filename):
         return jsonify({"status": "error", "message": "Неверный формат файла", "code": 400}), 400
 
-    # Step 2: Save file securely
+    # Шаг 2: Безопасное сохранение файла
     try:
         filename = secure_filename(file.filename)
         filepath = os.path.join(UPLOAD_FOLDER, filename)
@@ -68,12 +67,12 @@ def process_images():
         return jsonify({"status": "error", "message": f"Ошибка сохранения файла: {str(e)}", "code": 500}), 500
 
     try:
-        # Step 3: Convert image to Base64 for Gemini
-        with open(filepath, "rb") as image_file:
+        # Шаг 3: Конвертация изображения в Base64 для Gemini
+        with open(filepath, "rb") as image_file:  # Открываем файл для чтения в бинарном режиме
             img_b64_str = base64.b64encode(image_file.read()).decode("utf-8")
-        img_type = file.content_type
+        img_type = file.content_type  # Получаем тип содержимого (например, "image/png")
 
-        # Step 4: Send image to Gemini for OCR and ingredient extraction
+        # Шаг 4: Отправка изображения в Gemini для OCR и извлечения ингредиентов
         response = model.generate_content([
             "Ты OCR-ассистент, твоя задача – извлекать состав продукта из текста на изображении. "
             "Неважно, на каком языке состав указан. Твоя цель:  \n\n"
@@ -83,39 +82,39 @@ def process_images():
             "   [\"вода\", \"сок манго\", \"кислота\", \"сукралоза\", \"пищевые красители\", \"E102\", \"E110\"]  \n"
             "4. Никакой другой формы ответа, только JSON-массив.",
             {
-                "mime_type": file.content_type,
+                "mime_type": img_type,
                 "data": img_b64_str
             }
         ])
 
-        # Step 4: Parsing the response from Gemini
-        extracted_text = response.text.strip()
+        # Шаг 5: Парсинг ответа
+extracted_text = response.text.strip()
 
-        # Extract JSON using regex
-        match = re.search(r'\[.*\]', extracted_text, re.DOTALL)
-        if match:
-            json_str = match.group(0)
-        else:
-            return jsonify({
-                "status": "error",
-                "message": f"Ошибка извлечения JSON: {extracted_text}",
-                "code": 500
-            }), 500
+# Используем регулярные выражения, чтобы извлечь корректный JSON
+match = re.search(r'\[.*\]', extracted_text, re.DOTALL)
+if match:
+    json_str = match.group(0)
+else:
+    return jsonify({
+        "status": "error",
+        "message": f"Ошибка извлечения JSON: {extracted_text}",
+        "code": 500
+    }), 500
 
-        # Safe JSON parsing
-        try:
-            ingredients_list = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            return jsonify({
-                "status": "error",
-                "message": f"Ошибка обработки JSON: {extracted_text}, Ошибка: {e}",
-                "code": 500
-            }), 500
+# Безопасный парсинг JSON-ответа
+try:
+    ingredients_list = json.loads(json_str)
+except json.JSONDecodeError as e:
+    return jsonify({
+        "status": "error",
+        "message": f"Ошибка обработки JSON: {json_str}, Ошибка: {e}",
+        "code": 500
+    }), 500
 
-        # Step 6: Check Halal status
+        # Шаг 6: Проверка статуса халяльности
         halal_status_result = check_halal_status(ingredients_list)
 
-        # Step 7: Return processed response
+        # Шаг 7: Возвращение обработанного ответа
         return jsonify({
             "status": "success",
             "message": "Файл успешно загружен",
@@ -128,12 +127,86 @@ def process_images():
         }), 200
 
     except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": f"Ошибка обработки изображения: {str(e)}",
-            "code": 500
-        }), 500
+        return jsonify({"status": "error", "message": f"Ошибка обработки изображения: {str(e)}", "code": 500}), 500
 
+
+# testprocess-images for frontend
+@routes.route("/process-images1", methods=["POST"])
+def process_images1():
+    """Extract text from an image using GPT-4o OCR and check if ingredients are Halal/Haram."""
+
+    # Step 1: Validate File
+    if "file" not in request.files:
+        return jsonify({"status": "error", "message": "Файл не найден", "code": 400}), 400
+
+    file = request.files["file"]
+
+    if file.filename == "":
+        return jsonify({"status": "error", "message": "Файл не выбран", "code": 400}), 400
+
+    if not allowed_file(file.filename):
+        return jsonify({"status": "error", "message": "Неверный формат файла", "code": 400}), 400
+
+    # Step 2: Save File Securely
+    filename = secure_filename(file.filename)
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(filepath)
+
+    try:
+        # Step 3: Convert Image to Base64 for OpenAI
+        file.seek(0)  # Reset file pointer to beginning
+        img_b64_str = base64.b64encode(file.read()).decode("utf-8")
+        img_type = file.content_type  # Get content type (e.g., "image/png")
+
+        # Step 5: Parse Response
+
+        ingredients_list = ["вода", "сахар", "диоксид углерода", "карамельный краситель E150d", "ортофосфорная кислота", "натриевый бензоат", "натуральные ароматизаторы", "кофеин"]
+
+        # Проверяем статус
+        halal_status = check_halal_status(ingredients_list)
+        current_user_id = get_jwt_identity()
+
+        # Сохранение сканирования
+        scan_entry = ScanHistory(
+            user_id=current_user_id,
+            product_name="Неизвестно",  # Название может добавить админ
+            image=filepath,
+            ingredients=", ".join(ingredients_list),
+            status=halal_status["status"],
+            haram_ingredients=", ".join(halal_status["found_ingredients"])
+        )
+        db.session.add(scan_entry)
+        db.session.commit()
+
+        return jsonify({
+            "status": "success",
+            "message": "Сканирование завершено",
+            "data": {
+                "scan_id": scan_entry.id,
+                "status": halal_status["status"],
+                "found_ingredients": halal_status["found_ingredients"]
+            }
+        }), 200
+
+
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Ошибка обработки изображения: {str(e)}"}), 500
+
+
+@routes.route("/scan-history", methods=["GET"])
+def get_scan_history():
+    scans = ScanHistory.query.filter_by(user_id=get_jwt_identity()).order_by(ScanHistory.scan_date.desc()).all()
+
+    scan_data = [{
+        "id": scan.id,
+        "product_name": scan.product_name,
+        "status": scan.status,
+        "haram_ingredients": scan.haram_ingredients,
+        "scan_date": scan.scan_date.strftime('%Y-%m-%d %H:%M:%S')
+    } for scan in scans]
+
+    return jsonify({"status": "success", "history": scan_data}), 200
 
 @routes.route('/test', methods=['GET'])
 @jwt_required()
