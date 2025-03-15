@@ -1,5 +1,6 @@
 from operator import or_
 import ast
+import re
 from flask import Blueprint, request, jsonify
 from sqlalchemy.orm import joinedload
 from werkzeug.utils import secure_filename
@@ -44,10 +45,10 @@ def allowed_file(filename):
 
 @routes.route("/process-images", methods=["POST"])
 def process_images():
-    """Extract text from an image using GPT-4o OCR and check if ingredients are Halal/Haram."""
-    
-    # Step 1: Validate File
-    if "file" not in request.files:
+    """Extracts text from an image using Gemini API and checks ingredients for Halal compliance."""
+
+    # Step 1: Validate file
+    if 'file' not in request.files:
         return jsonify({"status": "error", "message": "Файл не найден", "code": 400}), 400
 
     file = request.files['file']
@@ -58,7 +59,7 @@ def process_images():
     if not allowed_file(file.filename):
         return jsonify({"status": "error", "message": "Неверный формат файла", "code": 400}), 400
 
-    # Шаг 2: Безопасное сохранение файла
+    # Step 2: Save file securely
     try:
         filename = secure_filename(file.filename)
         filepath = os.path.join(UPLOAD_FOLDER, filename)
@@ -67,12 +68,12 @@ def process_images():
         return jsonify({"status": "error", "message": f"Ошибка сохранения файла: {str(e)}", "code": 500}), 500
 
     try:
-        # Шаг 3: Конвертация изображения в Base64 для Gemini
-        with open(filepath, "rb") as image_file:  # Открываем файл для чтения в бинарном режиме
+        # Step 3: Convert image to Base64 for Gemini
+        with open(filepath, "rb") as image_file:
             img_b64_str = base64.b64encode(image_file.read()).decode("utf-8")
-        img_type = file.content_type  # Получаем тип содержимого (например, "image/png")
+        img_type = file.content_type
 
-        # Шаг 4: Отправка изображения в Gemini для OCR и извлечения ингредиентов
+        # Step 4: Send image to Gemini for OCR and ingredient extraction
         response = model.generate_content([
             "Ты OCR-ассистент, твоя задача – извлекать состав продукта из текста на изображении. "
             "Неважно, на каком языке состав указан. Твоя цель:  \n\n"
@@ -82,39 +83,39 @@ def process_images():
             "   [\"вода\", \"сок манго\", \"кислота\", \"сукралоза\", \"пищевые красители\", \"E102\", \"E110\"]  \n"
             "4. Никакой другой формы ответа, только JSON-массив.",
             {
-                "mime_type": img_type,
+                "mime_type": file.content_type,
                 "data": img_b64_str
             }
         ])
 
-        # Шаг 5: Парсинг ответа
-extracted_text = response.text.strip()
+        # Step 4: Parsing the response from Gemini
+        extracted_text = response.text.strip()
 
-# Используем регулярные выражения, чтобы извлечь корректный JSON
-match = re.search(r'\[.*\]', extracted_text, re.DOTALL)
-if match:
-    json_str = match.group(0)
-else:
-    return jsonify({
-        "status": "error",
-        "message": f"Ошибка извлечения JSON: {extracted_text}",
-        "code": 500
-    }), 500
+        # Extract JSON using regex
+        match = re.search(r'\[.*\]', extracted_text, re.DOTALL)
+        if match:
+            json_str = match.group(0)
+        else:
+            return jsonify({
+                "status": "error",
+                "message": f"Ошибка извлечения JSON: {extracted_text}",
+                "code": 500
+            }), 500
 
-# Безопасный парсинг JSON-ответа
-try:
-    ingredients_list = json.loads(json_str)
-except json.JSONDecodeError as e:
-    return jsonify({
-        "status": "error",
-        "message": f"Ошибка обработки JSON: {json_str}, Ошибка: {e}",
-        "code": 500
-    }), 500
+        # Safe JSON parsing
+        try:
+            ingredients_list = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            return jsonify({
+                "status": "error",
+                "message": f"Ошибка обработки JSON: {extracted_text}, Ошибка: {e}",
+                "code": 500
+            }), 500
 
-        # Шаг 6: Проверка статуса халяльности
+        # Step 6: Check Halal status
         halal_status_result = check_halal_status(ingredients_list)
 
-        # Шаг 7: Возвращение обработанного ответа
+        # Step 7: Return processed response
         return jsonify({
             "status": "success",
             "message": "Файл успешно загружен",
@@ -127,7 +128,12 @@ except json.JSONDecodeError as e:
         }), 200
 
     except Exception as e:
-        return jsonify({"status": "error", "message": f"Ошибка обработки изображения: {str(e)}", "code": 500}), 500
+        return jsonify({
+            "status": "error",
+            "message": f"Ошибка обработки изображения: {str(e)}",
+            "code": 500
+        }), 500
+
 
 
 # testprocess-images for frontend
