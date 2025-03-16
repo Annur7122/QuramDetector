@@ -13,6 +13,7 @@ from flask_jwt_extended import jwt_required,get_jwt_identity
 import base64
 import google.generativeai as genai
 from dotenv import load_dotenv
+import psycopg2
 
 from utils import get_alternative_products
 
@@ -31,6 +32,7 @@ def allowed_file(filename):
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-flash') #using gemini-pro-vision to send images.
+DB_URL = "postgresql://quramdb2:9P3RoNtzfA08JVXClmUgTXE1fH3D7Ys8@dpg-cuua60qj1k6c73dojbt0-a.oregon-postgres.render.com/quramdb2"
 
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
@@ -43,9 +45,10 @@ def allowed_file(filename):
     """Check if uploaded file has an allowed extension."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
 @routes.route("/process-images", methods=["POST"])
 def process_images():
-    """Extracts text from an image using Gemini API and checks ingredients for Halal compliance."""
+    """Extracts text from an image, determines product category, checks ingredients for Halal compliance."""
 
     # Step 1: Validate file
     if 'file' not in request.files:
@@ -68,29 +71,26 @@ def process_images():
         return jsonify({"status": "error", "message": f"Ошибка сохранения файла: {str(e)}", "code": 500}), 500
 
     try:
-        # Step 3: Convert image to Base64 for Gemini
+        # Step 3: Convert image to Base64 for Gemini OCR
         with open(filepath, "rb") as image_file:
             img_b64_str = base64.b64encode(image_file.read()).decode("utf-8")
-        img_type = file.content_type
 
-        # Step 4: Send image to Gemini for OCR and ingredient extraction
+        # Step 4: Extract ingredients from image using Gemini
         response = model.generate_content([
             "Ты OCR-ассистент, твоя задача – извлекать состав продукта из текста на изображении.\n\n"
-             "Инструкция:\n"
+            "Инструкция:\n"
             "1. Извлеки **только состав продукта, написанный на русском или казахском языках**. "
             "Игнорируй текст на всех других языках.\n"
             "2. Выдели все ингредиенты и добавки отдельно (например: \"вода\", \"сок манго\", \"қышқыл\", \"сукралоза\", \"лимонная кислота\", \"E102\", \"E110\").\n"
             "3. Если встречаются добавки вида \"E100\", \"E121\" и другие с префиксом E, выделяй их отдельно как индивидуальные элементы.\n"
-            "4. Верни результат строго в формате JSON-массива, без дополнительных комментариев или пояснений. Например:\n"
-            "[\"вода\", \"қант\", \"лимонная кислота\", \"қоюландырғыш\", \"E102\", \"E110\"]",
-    {
-        "mime_type": file.content_type,
-        "data": img_b64_str
-    }
-])
+            "4. Верни результат строго в формате JSON-массива, без дополнительных комментариев или пояснений.",
+        {
+            "mime_type": file.content_type,
+            "data": img_b64_str
+         }
+        ])
 
-
-        # Step 4: Parsing the response from Gemini
+        # Step 5: Parsing the response from Gemini
         extracted_text = response.text.strip()
 
         # Extract JSON using regex
@@ -98,43 +98,161 @@ def process_images():
         if match:
             json_str = match.group(0)
         else:
-            return jsonify({
-                "status": "error",
-                "message": f"Ошибка извлечения JSON: {extracted_text}",
-                "code": 500
-            }), 500
+            return jsonify({"status": "error", "message": f"Ошибка извлечения JSON: {extracted_text}", "code": 500}), 500
 
-        # Safe JSON parsing
+        # Parse JSON safely
         try:
             ingredients_list = json.loads(json_str)
         except json.JSONDecodeError as e:
-            return jsonify({
-                "status": "error",
-                "message": f"Ошибка обработки JSON: {extracted_text}, Ошибка: {e}",
-                "code": 500
-            }), 500
+            return jsonify({"status": "error", "message": f"Ошибка обработки JSON: {extracted_text}, Ошибка: {e}", "code": 500}), 500
 
-        # Step 6: Check Halal status
-        halal_status_result = check_halal_status(ingredients_list)
+        # Step 6: Generate category using AI
+        ai_category = generate_category_ai(ingredients_list)
 
-        # Step 7: Return processed response
+        # Step 7: Check if category exists in DB
+        category_db_name, description_id = find_existing_category(ai_category)
+
+        if not description_id:
+            # Category doesn't exist, insert new category
+            description_id = insert_category(ai_category)
+            final_category = ai_category
+        else:
+            final_category = category_db_name
+
+        # Step 8: Check halal status
+        halal_result = check_halal_status(ingredients_list)
+        halal_status = halal_result["status"]
+        found_ingredients = halal_result["found_ingredients"]
+
+        # Debugging Logs
+        print(f"Final category: {final_category}")
+        print(f"Description ID: {description_id} (type: {type(description_id)})")
+        print(f"Found Haram Ingredients: {found_ingredients}")
+
+        # Step 9: Insert product to DB
+        insert_product(ingredients_list, filepath, halal_status, description_id, found_ingredients)
+
+        # Step 10: Return response
         return jsonify({
             "status": "success",
             "message": "Файл успешно загружен",
             "data": {
                 "file_path": filepath,
                 "extracted_text": ingredients_list,
-                "status": halal_status_result["status"],
-                "found_ingredients": halal_status_result["found_ingredients"]
+                "category": final_category,
+                "description_id": description_id,
+                "halal_status": halal_status,
+                "found_ingredients": found_ingredients
             }
         }), 200
 
     except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": f"Ошибка обработки изображения: {str(e)}",
-            "code": 500
-        }), 500
+        return jsonify({"status": "error", "message": f"Ошибка обработки изображения: {str(e)}", "code": 500}), 500
+    
+def find_existing_category(category_name):
+    """Check if the given category exists in the description table."""
+    conn = psycopg2.connect(DB_URL)
+    cur = conn.cursor()
+
+    category_name = category_name.lower().strip()
+
+    # Check if category exists using a case-insensitive search
+    cur.execute("SELECT id, name FROM description WHERE LOWER(name) LIKE %s", (f"%{category_name}%",))
+    result = cur.fetchone()
+
+    conn.close()
+
+    if result:
+        return result[1], result[0]  # Return category name and ID
+    return None, None  # If not found, return None
+
+
+def generate_category_ai(ingredients):
+    """Generates a precise food category based on ingredients, choosing from existing categories when possible."""
+    
+    conn = psycopg2.connect(DB_URL)
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM description")
+    existing_categories = [row[0].lower() for row in cur.fetchall()]
+    conn.close()
+
+    prompt = (
+        "Ты эксперт по классификации продуктов. Определи категорию продукта по его составу.\n\n"
+        "Существующие категории: " + ", ".join(existing_categories) + ".\n\n"
+        f"Ингредиенты продукта: {', '.join(ingredients)}.\n\n"
+        "Инструкция:\n"
+        "- Если продукт подходит под одну из существующих категорий, выбери её и напиши ТОЛЬКО её название.\n"
+        "- Если ни одна из категорий не подходит, предложи новую краткую категорию (1-2 слова).\n\n"
+        "Ответь строго **ТОЛЬКО названием категории** без пояснений и дополнительных комментариев.\n"
+        "Примеры ответов: сок, газировка, молочный напиток, йогурт."
+    )
+
+    response = model.generate_content(prompt)
+    raw_category = response.text.strip().lower()
+
+    # **Sanitize the output**
+    clean_category = sanitize_category(raw_category)
+
+    return clean_category
+
+
+
+def sanitize_category(category_text):
+    """Ensures AI-generated category is concise, formatted correctly, and meaningful."""
+    category_text = category_text.strip()
+
+    # Extract only the first phrase before punctuation or explanations
+    category_text = re.split(r'[.,;:\-—]', category_text)[0]
+
+    # Remove unnecessary words and special characters
+    category_text = re.sub(r"[^а-яА-ЯёЁa-zA-Z0-9 ]", "", category_text).strip()
+
+    # If AI response is invalid, set it as 'неизвестно'
+    if category_text in ["ингредиенты продукта", "не могу определить", "без категории", "не знаю"]:
+        return "неизвестно"
+
+    # Ensure category is at most 2 words
+    category_words = category_text.split()
+    category_text = " ".join(category_words[:2])
+
+    return category_text.lower()
+
+
+def insert_category(category_name):
+    """Inserts a new category into the database."""
+    conn = psycopg2.connect(DB_URL)
+    cur = conn.cursor()
+
+    cur.execute("INSERT INTO description (name) VALUES (%s) RETURNING id", (category_name,))
+    category_id = cur.fetchone()[0]
+    conn.commit()
+    conn.close()
+
+    return category_id
+
+
+def insert_product(ingredients, image_path, halal_status, description_id, found_ingredients):
+    """Inserts the product details into the database."""
+    conn = psycopg2.connect(DB_URL)
+    cur = conn.cursor()
+
+    ingredients_str = ", ".join(ingredients)
+    haram_ingredients_str = ", ".join(found_ingredients) if found_ingredients else None
+
+    # Ensure description_id is valid
+    if description_id is None:
+        raise ValueError("description_id is None, cannot insert into database.")
+
+    cur.execute(
+        """
+        INSERT INTO product (name, image, ingredients, status, description_id, haram_ingredients)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """,
+        ("Scanned Product", image_path, ingredients_str, halal_status, description_id, haram_ingredients_str)
+    )
+
+    conn.commit()
+    conn.close()
 
 
 
