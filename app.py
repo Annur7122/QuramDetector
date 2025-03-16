@@ -35,6 +35,11 @@ db.init_app(app)
 migrate = Migrate(app, db)
 
 app.register_blueprint(routes)
+@app.before_request
+def handle_options():
+    """Разрешаем OPTIONS-запросы без проверки JWT"""
+    if request.method == "OPTIONS":
+        return "", 200  # Отдаем пустой 200 OK, чтобы CORS работал нормально
 
 @app.before_request
 def check_auth():
