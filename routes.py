@@ -352,13 +352,15 @@ def get_product(product_id):
     product.count += 1  # Увеличиваем счётчик
     db.session.commit()
 
-    reviews = Review.query.filter_by(product_id=product.id).all()
+    reviews = db.session.query(Review, User.name).join(User, Review.user_id == User.id).filter(
+        Review.product_id == product.id).all()
 
     review_list = [{
-        "id": r.id,
-        "user_id": r.user_id,
-        "review_description": r.review_description,
-        "stars": r.stars
+        "id": r.Review.id,
+        "user_id": r.Review.user_id,
+        "user_name": r.name,  # Добавили имя пользователя
+        "review_description": r.Review.review_description,
+        "stars": r.Review.stars
     } for r in reviews]
 
     return jsonify({
