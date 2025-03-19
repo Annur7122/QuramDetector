@@ -554,3 +554,64 @@ def get_favourites():
     ]
 
     return jsonify({"status": "success", "data": {"favourites": products_list}}), 200
+
+
+@routes.route('/scans/<int:scan_id>/reviews', methods=['POST'])
+def add_review1(scan_id):
+    data = request.get_json()
+    user_id = data.get("user_id")
+    comment = data.get("comment")
+    rating = data.get("rating")
+
+    scan = ScanHistory.query.get(scan_id)
+    if not scan:
+        return jsonify({"error": "Scan not found"}), 404
+
+    if not user_id or not comment or not rating:
+        return jsonify({"error": "Missing fields"}), 400
+
+    new_review = Review(
+        scan_history_id=scan_id,
+        user_id=user_id,
+        comment=comment,
+        rating=rating
+    )
+    db.session.add(new_review)
+    db.session.commit()
+
+    return jsonify({"message": "Review added successfully"}), 201
+
+@routes.route('/scans/<int:scan_id>/reviews', methods=['GET'])
+def get_reviews(scan_id):
+    scan = ScanHistory.query.get(scan_id)
+    if not scan:
+        return jsonify({"error": "Scan not found"}), 404
+
+    reviews = Review.query.filter_by(scan_history_id=scan_id).all()
+    return jsonify([
+        {
+            "id": review.id,
+            "user_id": review.user_id,
+            "comment": review.comment,
+            "rating": review.rating,
+            "created_at": review.created_at
+        }
+        for review in reviews
+    ])
+
+@routes.route('/scans', methods=['GET'])
+def get_scans():
+    scans = ScanHistory.query.all()
+    return jsonify([
+        {
+            "id": scan.id,
+            "user_id": scan.user_id,
+            "product_name": scan.product_name,
+            "scan_date": scan.scan_date,
+            "status": scan.status,
+            "reviews": len(scan.reviews)
+        }
+        for scan in scans
+    ])
+
+
