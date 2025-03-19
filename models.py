@@ -66,6 +66,8 @@ class ScanHistory(db.Model):
     is_processed = db.Column(db.Boolean, default=False)
     description_id = db.Column(db.Integer, db.ForeignKey('description.id'), nullable=True)
 
+    reviews = db.relationship('Review', backref='scan_history', lazy=True)
+  
 # Избранное
 class Favourite(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -76,6 +78,7 @@ class Favourite(db.Model):
 # Отзывы
 class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    scan_history_id = db.Column(db.Integer, db.ForeignKey('scan_history.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
     review_description = db.Column(db.Text, nullable=True)
