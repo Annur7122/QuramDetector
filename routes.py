@@ -559,22 +559,24 @@ def get_favourites():
 @routes.route('/scans/<int:scan_id>/reviews', methods=['POST'])
 def add_review1(scan_id):
     data = request.get_json()
-    user_id = data.get("user_id")
-    comment = data.get("comment")
-    rating = data.get("rating")
+    user_id = get_jwt_identity()
+    review_description = data.get("review_description")
+    stars = data.get("stars")
+
+    print(user_id, review_description, stars)
 
     scan = ScanHistory.query.get(scan_id)
     if not scan:
         return jsonify({"error": "Scan not found"}), 404
 
-    if not user_id or not comment or not rating:
+    if not user_id or not review_description or not stars:
         return jsonify({"error": "Missing fields"}), 400
 
     new_review = Review(
         scan_history_id=scan_id,
         user_id=user_id,
-        comment=comment,
-        rating=rating
+        review_description=review_description,
+        stars=stars
     )
     db.session.add(new_review)
     db.session.commit()
@@ -592,9 +594,8 @@ def get_reviews(scan_id):
         {
             "id": review.id,
             "user_id": review.user_id,
-            "comment": review.comment,
-            "rating": review.rating,
-            "created_at": review.created_at
+            "review_description": review.review_description,
+            "stars": review.stars
         }
         for review in reviews
     ])

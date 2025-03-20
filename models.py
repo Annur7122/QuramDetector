@@ -80,7 +80,7 @@ class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     scan_history_id = db.Column(db.Integer, db.ForeignKey('scan_history.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=True)
     review_description = db.Column(db.Text, nullable=True)
     stars = db.Column(db.Integer, nullable=False)
 
