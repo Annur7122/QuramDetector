@@ -1,3 +1,4 @@
+from datetime import datetime
 from operator import or_
 import ast
 import re
@@ -132,6 +133,20 @@ def process_images():
         # Step 9: Insert product to DB
         insert_product(ingredients_list, filepath, halal_status, description_id, found_ingredients)
 
+        new_scan = ScanHistory(
+            user_id=get_jwt_identity(),
+            product_name=final_category,
+            image=filepath,
+            ingredients=", ".join(ingredients_list),  # Список ингредиентов как текст
+            scan_date=datetime.utcnow(),
+            status=halal_status,
+            haram_ingredients=", ".join(found_ingredients) if found_ingredients else None,
+            # Харамные ингредиенты, если есть
+        )
+
+        db.session.add(new_scan)
+        db.session.commit()
+
         # Step 10: Return response
         return jsonify({
             "status": "success",
@@ -254,72 +269,6 @@ def insert_product(ingredients, image_path, halal_status, description_id, found_
     conn.commit()
     conn.close()
 
-
-
-# testprocess-images for frontend
-@routes.route("/process-images1", methods=["POST"])
-def process_images1():
-    """Extract text from an image using GPT-4o OCR and check if ingredients are Halal/Haram."""
-
-    # Step 1: Validate File
-    if "file" not in request.files:
-        return jsonify({"status": "error", "message": "Файл не найден", "code": 400}), 400
-
-    file = request.files["file"]
-
-    if file.filename == "":
-        return jsonify({"status": "error", "message": "Файл не выбран", "code": 400}), 400
-
-    if not allowed_file(file.filename):
-        return jsonify({"status": "error", "message": "Неверный формат файла", "code": 400}), 400
-
-    # Step 2: Save File Securely
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
-    file.save(filepath)
-
-    try:
-        # Step 3: Convert Image to Base64 for OpenAI
-        file.seek(0)  # Reset file pointer to beginning
-        img_b64_str = base64.b64encode(file.read()).decode("utf-8")
-        img_type = file.content_type  # Get content type (e.g., "image/png")
-
-        # Step 5: Parse Response
-
-        ingredients_list = ["вода", "сахар", "диоксид углерода", "карамельный краситель E150d", "ортофосфорная кислота", "натриевый бензоат", "натуральные ароматизаторы", "кофеин"]
-
-        # Проверяем статус
-        halal_status = check_halal_status(ingredients_list)
-        current_user_id = get_jwt_identity()
-
-        # Сохранение сканирования
-        scan_entry = ScanHistory(
-            user_id=current_user_id,
-            product_name="Неизвестно",  # Название может добавить админ
-            image=filepath,
-            ingredients=", ".join(ingredients_list),
-            status=halal_status["status"],
-            haram_ingredients=", ".join(halal_status["found_ingredients"])
-        )
-        db.session.add(scan_entry)
-        db.session.commit()
-
-        return jsonify({
-            "status": "success",
-            "message": "Сканирование завершено",
-            "data": {
-                "scan_id": scan_entry.id,
-                "status": halal_status["status"],
-                "found_ingredients": halal_status["found_ingredients"]
-            }
-        }), 200
-
-
-
-    except Exception as e:
-        return jsonify({"status": "error", "message": f"Ошибка обработки изображения: {str(e)}"}), 500
-
-
 @routes.route("/scan-history", methods=["GET"])
 def get_scan_history():
     scans = ScanHistory.query.filter_by(user_id=get_jwt_identity()).order_by(ScanHistory.scan_date.desc()).all()
@@ -349,7 +298,7 @@ def get_product(product_id):
             "code": 404
         }), 404
 
-    product.count += 1  # Увеличиваем счётчик
+
     db.session.commit()
 
     reviews = db.session.query(Review, User.name).join(User, Review.user_id == User.id).filter(
@@ -399,8 +348,6 @@ def get_all_products():
         "ingredients": product.ingredients
     } for product in products]
 
-
-
     return jsonify({
         "status": "success",
         "data": {
@@ -435,9 +382,6 @@ def search_products():
 
     if not query:
         return jsonify({"status": "error", "message": "Введите поисковый запрос"}), 400
-
-
-
 
     try:
         products = db.session.query(Product).join(Description).filter(

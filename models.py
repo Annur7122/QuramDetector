@@ -78,7 +78,7 @@ class Favourite(db.Model):
 # Отзывы
 class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    scan_history_id = db.Column(db.Integer, db.ForeignKey('scan_history.id'), nullable=False)
+    scan_history_id = db.Column(db.Integer, db.ForeignKey('scan_history.id'), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=True)
     review_description = db.Column(db.Text, nullable=True)
