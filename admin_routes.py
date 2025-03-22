@@ -33,6 +33,7 @@ def save_product():
     ingredients = data.get("ingredients")
     status = data.get("status")
     haram_ingredients = data.get("haram_ingredients")
+    description_id = data.get("description_id")
 
     scan = ScanHistory.query.get_or_404(scan_id)
 
@@ -43,7 +44,8 @@ def save_product():
         ingredients=ingredients,
         status=status,
         haram_ingredients=haram_ingredients,
-        count=1
+        count=1,
+        description_id=description_id
     )
 
     db.session.add(new_product)

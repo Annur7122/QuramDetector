@@ -3,6 +3,7 @@ from operator import or_
 import ast
 import re
 from flask import Blueprint, request, jsonify
+import requests
 from sqlalchemy.orm import joinedload
 from werkzeug.utils import secure_filename
 import os
@@ -16,7 +17,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import psycopg2
 
-from utils import get_alternative_products
+from utils import get_alternative_products_endpoint
 
 load_dotenv()
 
@@ -141,11 +142,14 @@ def process_images():
             scan_date=datetime.utcnow(),
             status=halal_status,
             haram_ingredients=", ".join(found_ingredients) if found_ingredients else None,
+            description_id=description_id
             # Харамные ингредиенты, если есть
         )
 
         db.session.add(new_scan)
         db.session.commit()
+
+        alternatives_data = get_alternative_products_endpoint(description_id)
 
         # Step 10: Return response
         return jsonify({
@@ -157,7 +161,8 @@ def process_images():
                 "category": final_category,
                 "description_id": description_id,
                 "halal_status": halal_status,
-                "found_ingredients": found_ingredients
+                "found_ingredients": found_ingredients,
+                "alternatives_data": alternatives_data
             }
         }), 200
 
@@ -298,6 +303,11 @@ def get_product(product_id):
             "code": 404
         }), 404
 
+    if product.count is None:
+        product.count = 0
+
+    product.count += 1
+
 
     db.session.commit()
 
@@ -322,20 +332,6 @@ def get_product(product_id):
             "reviews": review_list
         }
     }), 200
-
-
-@routes.route("/product/<int:product_id>/alternatives", methods=["GET"])
-@jwt_required()
-def get_alternative_products_endpoint(product_id):
-    """Эндпоинт для получения альтернативных продуктов"""
-    product = Product.query.get(product_id)
-
-    if not product:
-        return jsonify({"status": "error", "message": "Продукт не найден"}), 404
-
-    alternatives = get_alternative_products(product)
-    return jsonify({"status": "success", "data": alternatives}), 200
-
 
 @routes.route('/products', methods=['GET'])
 def get_all_products():
