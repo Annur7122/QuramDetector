@@ -496,8 +496,8 @@ def get_favourites():
     return jsonify({"status": "success", "data": {"favourites": products_list}}), 200
 
 
-@routes.route('/scans/<int:scan_id>/reviews', methods=['POST'])
-def add_review1(scan_id):
+@routes.route('/scans/latest/reviews', methods=['POST'])
+def add_review_latest():
     data = request.get_json()
     user_id = get_jwt_identity()
     review_description = data.get("review_description")
@@ -505,15 +505,17 @@ def add_review1(scan_id):
 
     print(user_id, review_description, stars)
 
-    scan = ScanHistory.query.get(scan_id)
-    if not scan:
-        return jsonify({"error": "Scan not found"}), 404
+    # Получаем последний scan_id
+    latest_scan = ScanHistory.query.order_by(ScanHistory.id.desc()).first()
+
+    if not latest_scan:
+        return jsonify({"error": "No scans found"}), 404
 
     if not user_id or not review_description or not stars:
         return jsonify({"error": "Missing fields"}), 400
 
     new_review = Review(
-        scan_history_id=scan_id,
+        scan_history_id=latest_scan.id,  # Привязываем к последнему скану
         user_id=user_id,
         review_description=review_description,
         stars=stars
@@ -521,7 +523,8 @@ def add_review1(scan_id):
     db.session.add(new_review)
     db.session.commit()
 
-    return jsonify({"message": "Review added successfully"}), 201
+    return jsonify({"message": "Review added successfully", "scan_id": latest_scan.id}), 201
+
 
 @routes.route('/scans/<int:scan_id>/reviews', methods=['GET'])
 def get_reviews(scan_id):
