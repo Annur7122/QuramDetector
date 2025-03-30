@@ -280,13 +280,37 @@ def get_scan_history():
 
     scan_data = [{
         "id": scan.id,
+        "user_id": scan.user_id,
         "product_name": scan.product_name,
+        "ingredients": scan.ingredients,
+        "image": scan.image,
         "status": scan.status,
+        "product_name": scan.product_name,
         "haram_ingredients": scan.haram_ingredients,
+        "is_processed": scan.is_processed,
+        "description_id": scan.description_id,
         "scan_date": scan.scan_date.strftime('%Y-%m-%d %H:%M:%S')
     } for scan in scans]
 
     return jsonify({"status": "success", "history": scan_data}), 200
+
+@routes.route("/get-scan/<int:scan_id>", methods=["GET"])
+def get_scan(scan_id):
+    scan = ScanHistory.query.get_or_404(scan_id)
+
+    return jsonify({
+        "id": scan.id,
+        "user_id": scan.user_id,
+        "product_name": scan.product_name,
+        "ingredients": scan.ingredients,
+        "image": scan.image,
+        "status": scan.status,
+        "product_name": scan.product_name,
+        "haram_ingredients": scan.haram_ingredients,
+        "is_processed": scan.is_processed,
+        "description_id": scan.description_id,
+        "scan_date": scan.scan_date.strftime('%Y-%m-%d %H:%M:%S')
+    }), 200
 
 @routes.route('/test', methods=['GET'])
 @jwt_required()
