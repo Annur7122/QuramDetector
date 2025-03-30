@@ -34,7 +34,7 @@ def allowed_file(filename):
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-flash') #using gemini-pro-vision to send images.
-DB_URL = "postgresql://quramdb2:9P3RoNtzfA08JVXClmUgTXE1fH3D7Ys8@dpg-cuua60qj1k6c73dojbt0-a.oregon-postgres.render.com/quramdb2"
+DB_URL = "postgresql://quramdb3:cUaVicWuj17LnZDz5a0wCzd6UVzvxZKa@dpg-cvighqqdbo4c73cklfr0-a.oregon-postgres.render.com/quramdb3"
 
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
@@ -323,12 +323,13 @@ def get_product(product_id):
     } for r in reviews]
 
     return jsonify({
-        "status": "success",
+        "status1": "success",
         "data": {
             "id": product.id,
             "name": product.name,
             "image": product.image,
             "ingredients": product.ingredients,
+            "status": product.status,
             "reviews": review_list
         }
     }), 200

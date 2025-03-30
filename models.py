@@ -54,7 +54,7 @@ class ScanResult(db.Model):
 
 # История проверок
 class ScanHistory(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Кто сканировал
     product_name = db.Column(db.String(200), nullable=False)  # Название, если продукта еще нет в БД
     image = db.Column(db.String(300), nullable=True)  # Фото упаковки или состава
