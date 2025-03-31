@@ -568,6 +568,27 @@ def get_reviews(scan_id):
         for review in reviews
     ])
 
+
+@routes.route('/scans/latest/reviews', methods=['GET'])
+def get_latest_reviews():
+    latest_scan = ScanHistory.query.order_by(ScanHistory.id.desc()).first()
+
+    if not latest_scan:
+        return jsonify({"error": "No scans found"}), 404
+
+    reviews = Review.query.filter_by(scan_history_id=latest_scan.id).all()
+
+    return jsonify([
+        {
+            "id": review.id,
+            "user_id": review.user_id,
+            "review_description": review.review_description,
+            "stars": review.stars
+        }
+        for review in reviews
+    ])
+
+
 @routes.route('/scans', methods=['GET'])
 def get_scans():
     scans = ScanHistory.query.all()
