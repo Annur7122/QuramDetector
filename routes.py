@@ -317,6 +317,22 @@ def get_scan(scan_id):
 def test():
     return jsonify({"status": "success", "data": {"test": "test1"}}), 200
 
+@routes.route('/last/alternatives', methods=['GET'])
+@jwt_required()
+def get_alternatives():
+    latest_scan = ScanHistory.query.order_by(ScanHistory.id.desc()).first()
+    alternatives_data = get_alternative_products_endpoint(latest_scan.description_id)
+
+    return jsonify({"alternatives_data": alternatives_data})
+
+@routes.route('/alternatives/<int:scan_id>', methods=['GET'])
+@jwt_required()
+def get_alternatives1(scan_id):
+    scan = ScanHistory.query.get(scan_id)
+    alternatives_data = get_alternative_products_endpoint(scan.description_id)
+
+    return jsonify({"alternatives_data": alternatives_data})
+
 @routes.route('/product/<int:product_id>', methods=['GET'])
 def get_product(product_id):
     product = Product.query.get(product_id)
