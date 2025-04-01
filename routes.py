@@ -369,6 +369,9 @@ def get_product(product_id):
             "name": product.name,
             "image": product.image,
             "ingredients": product.ingredients,
+            "count": product.count,
+            "haram_ingredients": product.haram_ingredients,
+            "description_id": product.description_id,
             "status": product.status,
             "reviews": review_list
         }
@@ -382,6 +385,7 @@ def get_all_products():
         "id": product.id,
         "name": product.name,
         "image": product.image,
+        "status": product.status,
         "ingredients": product.ingredients
     } for product in products]
 
@@ -394,13 +398,14 @@ def get_all_products():
 
 @routes.route('/top-products', methods=['GET'])
 def get_top_products():
-    top_products = Product.query.order_by(Product.count.desc()).limit(3).all()
+    top_products = Product.query.order_by(Product.count.desc()).limit(10).all()
 
     product_list = [{
         "id": p.id,
         "name": p.name,
         "image": p.image,
         "ingredients": p.ingredients,
+        "status": p.status,
         "count": p.count
     } for p in top_products]
 
