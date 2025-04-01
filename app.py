@@ -5,6 +5,7 @@ from flask_cors import CORS
 from flask_migrate import Migrate
 
 from admin_routes import admin_routes
+from google_routes import google_routes
 from models import db, User
 from routes import routes
 from flask_jwt_extended import JWTManager
@@ -30,6 +31,7 @@ app.register_blueprint(admin_routes)
 
 from notification_routes import notification_routes
 app.register_blueprint(notification_routes, url_prefix='/notifications')
+app.register_blueprint(google_routes, url_prefix='/google_routes')
 
 db.init_app(app)
 migrate = Migrate(app, db)
