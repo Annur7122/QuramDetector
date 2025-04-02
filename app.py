@@ -5,7 +5,6 @@ from flask_cors import CORS
 from flask_migrate import Migrate
 
 from admin_routes import admin_routes
-from google_routes import google_routes
 from models import db, User
 from routes import routes
 from flask_jwt_extended import JWTManager
