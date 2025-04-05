@@ -46,6 +46,9 @@ class Product(db.Model):
     reviews = db.relationship('Review', backref='product', lazy=True)
     scan_result = db.relationship('ScanResult', backref='product', uselist=False)
 
+    def set_image_url(self, url):
+        self.image = url
+        db.session.commit()
 # Результат проверки продукта
 class ScanResult(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -54,7 +57,7 @@ class ScanResult(db.Model):
 
 # История проверок
 class ScanHistory(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Кто сканировал
     product_name = db.Column(db.String(200), nullable=False)  # Название, если продукта еще нет в БД
     image = db.Column(db.String(300), nullable=True)  # Фото упаковки или состава
@@ -67,7 +70,10 @@ class ScanHistory(db.Model):
     description_id = db.Column(db.Integer, db.ForeignKey('description.id'), nullable=True)
 
     reviews = db.relationship('Review', backref='scan_history', lazy=True)
-  
+
+    def set_image_url(self, url):
+        self.image = url
+        db.session.commit()
 # Избранное
 class Favourite(db.Model):
     id = db.Column(db.Integer, primary_key=True)

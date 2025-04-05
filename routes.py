@@ -34,7 +34,7 @@ def allowed_file(filename):
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-flash') #using gemini-pro-vision to send images.
-DB_URL = "postgresql://quramdb2:9P3RoNtzfA08JVXClmUgTXE1fH3D7Ys8@dpg-cuua60qj1k6c73dojbt0-a.oregon-postgres.render.com/quramdb2"
+DB_URL = "postgresql://quramdb3:cUaVicWuj17LnZDz5a0wCzd6UVzvxZKa@dpg-cvighqqdbo4c73cklfr0-a.oregon-postgres.render.com/quramdb3"
 
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
@@ -280,18 +280,58 @@ def get_scan_history():
 
     scan_data = [{
         "id": scan.id,
+        "user_id": scan.user_id,
         "product_name": scan.product_name,
+        "ingredients": scan.ingredients,
+        "image": scan.image,
         "status": scan.status,
+        "product_name": scan.product_name,
         "haram_ingredients": scan.haram_ingredients,
+        "is_processed": scan.is_processed,
+        "description_id": scan.description_id,
         "scan_date": scan.scan_date.strftime('%Y-%m-%d %H:%M:%S')
     } for scan in scans]
 
     return jsonify({"status": "success", "history": scan_data}), 200
 
+@routes.route("/get-scan/<int:scan_id>", methods=["GET"])
+def get_scan(scan_id):
+    scan = ScanHistory.query.get_or_404(scan_id)
+
+    return jsonify({
+        "id": scan.id,
+        "user_id": scan.user_id,
+        "product_name": scan.product_name,
+        "ingredients": scan.ingredients,
+        "image": scan.image,
+        "status": scan.status,
+        "product_name": scan.product_name,
+        "haram_ingredients": scan.haram_ingredients,
+        "is_processed": scan.is_processed,
+        "description_id": scan.description_id,
+        "scan_date": scan.scan_date.strftime('%Y-%m-%d %H:%M:%S')
+    }), 200
+
 @routes.route('/test', methods=['GET'])
 @jwt_required()
 def test():
     return jsonify({"status": "success", "data": {"test": "test1"}}), 200
+
+@routes.route('/last/alternatives', methods=['GET'])
+@jwt_required()
+def get_alternatives():
+    latest_scan = ScanHistory.query.order_by(ScanHistory.id.desc()).first()
+    alternatives_data = get_alternative_products_endpoint(latest_scan.description_id)
+
+    return jsonify({"alternatives_data": alternatives_data})
+
+@routes.route('/alternatives/<int:scan_id>', methods=['GET'])
+@jwt_required()
+def get_alternatives1(scan_id):
+    scan = ScanHistory.query.get(scan_id)
+    alternatives_data = get_alternative_products_endpoint(scan.description_id)
+
+    return jsonify({"alternatives_data": alternatives_data})
 
 @routes.route('/product/<int:product_id>', methods=['GET'])
 def get_product(product_id):
@@ -323,12 +363,16 @@ def get_product(product_id):
     } for r in reviews]
 
     return jsonify({
-        "status": "success",
+        "status1": "success",
         "data": {
             "id": product.id,
             "name": product.name,
             "image": product.image,
             "ingredients": product.ingredients,
+            "count": product.count,
+            "haram_ingredients": product.haram_ingredients,
+            "description_id": product.description_id,
+            "status": product.status,
             "reviews": review_list
         }
     }), 200
@@ -341,6 +385,7 @@ def get_all_products():
         "id": product.id,
         "name": product.name,
         "image": product.image,
+        "status": product.status,
         "ingredients": product.ingredients
     } for product in products]
 
@@ -353,13 +398,14 @@ def get_all_products():
 
 @routes.route('/top-products', methods=['GET'])
 def get_top_products():
-    top_products = Product.query.order_by(Product.count.desc()).limit(3).all()
+    top_products = Product.query.order_by(Product.count.desc()).limit(10).all()
 
     product_list = [{
         "id": p.id,
         "name": p.name,
         "image": p.image,
         "ingredients": p.ingredients,
+        "status": p.status,
         "count": p.count
     } for p in top_products]
 
@@ -542,6 +588,27 @@ def get_reviews(scan_id):
         }
         for review in reviews
     ])
+
+
+@routes.route('/scans/latest/reviews', methods=['GET'])
+def get_latest_reviews():
+    latest_scan = ScanHistory.query.order_by(ScanHistory.id.desc()).first()
+
+    if not latest_scan:
+        return jsonify({"error": "No scans found"}), 404
+
+    reviews = Review.query.filter_by(scan_history_id=latest_scan.id).all()
+
+    return jsonify([
+        {
+            "id": review.id,
+            "user_id": review.user_id,
+            "review_description": review.review_description,
+            "stars": review.stars
+        }
+        for review in reviews
+    ])
+
 
 @routes.route('/scans', methods=['GET'])
 def get_scans():
