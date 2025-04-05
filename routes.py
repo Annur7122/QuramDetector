@@ -33,7 +33,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-model = genai.GenerativeModel('gemini-2.0-flash') #using gemini-pro-vision to send images.
+model = genai.GenerativeModel('gemini-1.5-pro-latest') #using gemini-pro-vision to send images.
 DB_URL = "postgresql://quramdb3:cUaVicWuj17LnZDz5a0wCzd6UVzvxZKa@dpg-cvighqqdbo4c73cklfr0-a.oregon-postgres.render.com/quramdb3"
 
 UPLOAD_FOLDER = "uploads"
@@ -79,21 +79,14 @@ def process_images():
 
         # Step 4: Extract ingredients from image using Gemini
         response = model.generate_content([
-            # "Ты OCR-ассистент, твоя задача – извлекать состав продукта из текста на изображении.\n\n"
-            # "Инструкция:\n"
-            # "1. Извлеки **только состав продукта, написанный на русском или казахском языках**. "
-            # "Игнорируй текст на всех других языках.\n"
-            # "2. Выдели все ингредиенты и добавки отдельно (например: \"вода\", \"сок манго\", \"қышқыл\", \"сукралоза\", \"лимонная кислота\", \"E102\", \"E110\").\n"
-            # "3. Если встречаются добавки вида \"E100\", \"E121\" и другие с префиксом E, выделяй их отдельно как индивидуальные элементы.\n"
-            # "4. Верни результат строго в формате JSON-массива, без дополнительных комментариев или пояснений.",
-            "You are an OCR assistant specializing in extracting product ingredients from images.\n\n"
-                "Task: Extract and format the product composition written in Russian or Kazakh languages from the provided image.\n\n"
-                "Instructions:\n"
-                "1. Identify and extract ONLY the ingredient list written in Russian or Kazakh. Disregard any text in other languages.\n"
-                "2. List each individual ingredient and additive separately. For example: \"вода\", \"сок манго\", \"қышқыл\", \"сукралоза\", \"лимонная кислота\", \"E102\", \"E110\".\n"
-                "3. Treat E-numbers (e.g., \"E100\", \"E121\") as distinct ingredients.\n"
-                "4. Return the extracted ingredients strictly as a JSON array. Do not include any additional comments, explanations, or other text outside the JSON array.\n\n"
-                "Input Image:",
+            "Ты OCR-ассистент, твоя задача – извлекать состав продукта из текста на изображении.\n\n"
+            "Инструкция:\n"
+            "1. Извлеки **только состав продукта, написанный на русском или казахском языках**. "
+            "Игнорируй текст на всех других языках.\n"
+            "2. Выдели все ингредиенты и добавки отдельно (например: \"вода\", \"сок манго\", \"қышқыл\", \"сукралоза\", \"лимонная кислота\", \"E102\", \"E110\").\n"
+            "3. Если встречаются добавки вида \"E100\", \"E121\" и другие с префиксом E, выделяй их отдельно как индивидуальные элементы.\n"
+            "4. Верни результат строго в формате JSON-массива, без дополнительных комментариев или пояснений.",
+
         {
             "mime_type": file.content_type,
             "data": img_b64_str
