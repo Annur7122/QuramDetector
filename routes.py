@@ -161,17 +161,15 @@ def process_images():
         db.session.add(new_scan)
         db.session.commit()
 
-        alternatives_data = get_alternative_products_endpoint(description_id)
+        alt_data = get_alternative_products_endpoint(description_id)
+
+        # In case someone later changes the helper to return (data, status_code)
+        if isinstance(alt_data, tuple):
+            alt_data = alt_data[0]
+
+        alternatives_data = alt_data
 
 
-        print("✅ Type Check Before Return:")
-        print("file_path:", filepath, "| type:", type(filepath))
-        print("ingredients_list:", ingredients_list, "| type:", type(ingredients_list))
-        print("category:", final_category, "| type:", type(final_category))
-        print("description_id:", description_id, "| type:", type(description_id))
-        print("halal_status:", halal_status, "| type:", type(halal_status))
-        print("found_ingredients:", found_ingredients, "| type:", type(found_ingredients))
-        print("alternatives_data:", alternatives_data, "| type:", type(alternatives_data))
 
 
         # Step 10: Return response
@@ -355,16 +353,31 @@ def test():
 @jwt_required()
 def get_alternatives():
     latest_scan = ScanHistory.query.order_by(ScanHistory.id.desc()).first()
-    alternatives_data = get_alternative_products_endpoint(latest_scan.description_id)
-    return jsonify({"alternatives_data": alternatives_data})
+
+    if not latest_scan:
+        return jsonify({
+            "status": "error",
+            "message": "Скан не найден"
+        }), 404
+
+    data = get_alternative_products_endpoint(latest_scan.description_id)
+    return jsonify(data), 200
+
 
 @routes.route('/alternatives/<int:scan_id>', methods=['GET'])
 @jwt_required()
 def get_alternatives1(scan_id):
     scan = ScanHistory.query.get(scan_id)
-    alternatives_data = get_alternative_products_endpoint(scan.description_id)
 
-    return jsonify({"alternatives_data": alternatives_data})
+    if not scan:
+        return jsonify({
+            "status": "error",
+            "message": "Скан с указанным ID не найден"
+        }), 404
+
+    data = get_alternative_products_endpoint(scan.description_id)
+    return jsonify(data), 200
+
 
 
 @routes.route('/product/<int:product_id>', methods=['GET'])
