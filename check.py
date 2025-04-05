@@ -1360,30 +1360,20 @@ ALL_INGREDIENTS = {
 HARAM_INGREDIENTS = ALL_INGREDIENTS["haram"]
 SUSPECTED_INGREDIENTS = ALL_INGREDIENTS["suspected"]
 
-# ✅ Halal Status Checker
-def check_halal_status(ingredients, threshold=80):
+def check_halal_status(ingredients):
     found_haram = set()
     found_suspected = set()
 
     def matches_exact(element, reference_list):
         """Check for exact matches (case-insensitive)."""
         element_lower = element.lower()
-        return element_lower in (item.lower() for item in reference_list)
-
-    def matches_fuzzy(element, reference_list):
-        """Check for fuzzy matches only if the term is longer (more specific)."""
-        element_lower = element.lower()
-        for ref in reference_list:
-            ref_lower = ref.lower()
-            if len(element_lower.split()) > 1 and fuzz.partial_ratio(element_lower, ref_lower) >= threshold:
-                return ref  # Return the closest match
-        return None
+        return any(element_lower == item.lower() for item in reference_list)
 
     for ingredient in ingredients:
         ingredient = ' '.join(ingredient.lower().split())  # Normalize whitespace and lowercase
         words = ingredient.split()
 
-        # Step 1: If it contains multiple words, check for haram multi-word matches
+        # Step 1: Check for exact multi-word match in haram list
         if len(words) > 1:
             for haram_item in HARAM_INGREDIENTS:
                 haram_words = haram_item.lower().split()
@@ -1392,16 +1382,13 @@ def check_halal_status(ingredients, threshold=80):
                     found_haram.add(haram_item)
                     break  # No need to check further
 
-        # Step 2: Use fuzzy matching
-        match_haram = matches_fuzzy(ingredient, HARAM_INGREDIENTS)
-        match_suspected = matches_fuzzy(ingredient, SUSPECTED_INGREDIENTS)
-
-        if match_haram:
-            print(f"❌ {ingredient} - ХАРАМ (Matched: {match_haram})")
-            found_haram.add(match_haram)
-        elif match_suspected:
-            print(f"⚠️ {ingredient} - ПОДОЗРИТЕЛЬНО (Matched: {match_suspected})")
-            found_suspected.add(match_suspected)
+        # Step 2: Check exact matches
+        if matches_exact(ingredient, HARAM_INGREDIENTS):
+            print(f"❌ {ingredient} - ХАРАМ (Exact Match)")
+            found_haram.add(ingredient)
+        elif matches_exact(ingredient, SUSPECTED_INGREDIENTS):
+            print(f"⚠️ {ingredient} - ПОДОЗРИТЕЛЬНО (Exact Match)")
+            found_suspected.add(ingredient)
 
     # Step 3: Final classification
     if found_haram:
