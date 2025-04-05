@@ -23,9 +23,13 @@ def get_alternative_products_endpoint(description_id):
     # Ищем все продукты с переданным description_id
     alternatives = Product.query.filter_by(description_id=description_id).all()
 
-    # Если альтернатив нет, возвращаем пустой список
+    # Если альтернатив нет, возвращаем структуру ошибки как словарь
     if not alternatives:
-        return jsonify({"status": "error", "message": "Альтернативные продукты не найдены"}), 404
+        return {
+            "status": "error",
+            "message": "Альтернативные продукты не найдены",
+            "alternatives": []
+        }
 
     # Формируем список альтернативных продуктов
     alternative_products = [
@@ -37,4 +41,7 @@ def get_alternative_products_endpoint(description_id):
         for alt in alternatives
     ]
 
-    return alternative_products
+    return {
+        "status": "success",
+        "alternatives": alternative_products
+    }

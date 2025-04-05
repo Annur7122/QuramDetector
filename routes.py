@@ -161,13 +161,7 @@ def process_images():
         db.session.add(new_scan)
         db.session.commit()
 
-        alt_response, status_code = get_alternative_products_endpoint(description_id)
-
-        # Try to convert the response to JSON
-        if hasattr(alt_response, "get_json"):
-            alternatives_data = alt_response.get_json()
-        else:
-            alternatives_data = alt_response  # fallback, if it's already a dict
+        alternatives_data = get_alternative_products_endpoint(description_id)
 
 
         print("✅ Type Check Before Return:")
@@ -362,7 +356,6 @@ def test():
 def get_alternatives():
     latest_scan = ScanHistory.query.order_by(ScanHistory.id.desc()).first()
     alternatives_data = get_alternative_products_endpoint(latest_scan.description_id)
-
     return jsonify({"alternatives_data": alternatives_data})
 
 @routes.route('/alternatives/<int:scan_id>', methods=['GET'])
@@ -372,6 +365,7 @@ def get_alternatives1(scan_id):
     alternatives_data = get_alternative_products_endpoint(scan.description_id)
 
     return jsonify({"alternatives_data": alternatives_data})
+
 
 @routes.route('/product/<int:product_id>', methods=['GET'])
 def get_product(product_id):
