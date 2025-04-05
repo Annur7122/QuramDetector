@@ -132,7 +132,7 @@ def process_images():
         print(f"Found Haram Ingredients: {found_ingredients}")
 
         # Step 9: Insert product to DB
-        insert_product(ingredients_list, filepath, halal_status, description_id, found_ingredients)
+        # insert_product(ingredients_list, filepath, halal_status, description_id, found_ingredients)
 
         new_scan = ScanHistory(
             user_id=get_jwt_identity(),
