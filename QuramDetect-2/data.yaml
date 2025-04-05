@@ -1,0 +1,16 @@
+names:
+- alel
+- balqymyz
+- flint
+- grizzly
+- jacobs
+nc: 5
+roboflow:
+  license: CC BY 4.0
+  project: quramdetect
+  url: https://universe.roboflow.com/mukhtars/quramdetect/dataset/2
+  version: 2
+  workspace: mukhtars
+test: ../test/images
+train: ../train/images
+val: ../valid/images
