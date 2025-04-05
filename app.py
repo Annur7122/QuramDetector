@@ -20,6 +20,7 @@ CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://quramdb3:cUaVicWuj17LnZDz5a0wCzd6UVzvxZKa@dpg-cvighqqdbo4c73cklfr0-a.oregon-postgres.render.com/quramdb3'
+# app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:root@localhost:5433/postgres"
 app.debug = True
 
 app.config['JWT_SECRET_KEY'] = 'your_secret_key'  # Секретный ключ для подписи JWT

@@ -35,6 +35,7 @@ def allowed_file(filename):
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-pro-latest') #using gemini-pro-vision to send images.
 DB_URL = "postgresql://quramdb3:cUaVicWuj17LnZDz5a0wCzd6UVzvxZKa@dpg-cvighqqdbo4c73cklfr0-a.oregon-postgres.render.com/quramdb3"
+# DB_URL = "postgresql://postgres:root@localhost:5433/postgres"
 
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
@@ -93,28 +94,31 @@ def process_images():
          }
         ])
 
-        # Step 5: Parsing the response from Gemini
-        if hasattr(response, "text"):
-            extracted_text = response.text.strip()
-        else:
+        import logging
+
+
+        try:
+            raw_text = response.candidates[0].content.parts[0].text.strip()
+            logging.info("Gemini extracted raw text:\n%s", raw_text)
+
+            cleaned_text = re.sub(r"^```json\s*|\s*```$", "", raw_text, flags=re.IGNORECASE).strip()
+            ingredients_list = json.loads(cleaned_text)
+
+        except json.JSONDecodeError as e:
             return jsonify({
                 "status": "error",
-                "message": f"Неверный ответ от Gemini: {str(response)}",
+                "message": f"Ошибка обработки JSON: {str(e)}",
+                "raw_text": raw_text,
+                "code": 500
+            }), 500
+        except Exception as e:
+            return jsonify({
+                "status": "error",
+                "message": f"Ошибка при обработке ответа от Gemini: {str(e)}",
                 "code": 500
             }), 500
 
-        # Extract JSON using regex
-        match = re.search(r'\[.*\]', extracted_text, re.DOTALL)
-        if match:
-            json_str = match.group(0)
-        else:
-            return jsonify({"status": "error", "message": f"Ошибка извлечения JSON: {extracted_text}", "code": 500}), 500
 
-        # Parse JSON safely
-        try:
-            ingredients_list = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            return jsonify({"status": "error", "message": f"Ошибка обработки JSON: {extracted_text}, Ошибка: {e}", "code": 500}), 500
 
         # Step 6: Generate category using AI
         ai_category = generate_category_ai(ingredients_list)
@@ -157,7 +161,24 @@ def process_images():
         db.session.add(new_scan)
         db.session.commit()
 
-        alternatives_data = get_alternative_products_endpoint(description_id)
+        alt_response, status_code = get_alternative_products_endpoint(description_id)
+
+        # Try to convert the response to JSON
+        if hasattr(alt_response, "get_json"):
+            alternatives_data = alt_response.get_json()
+        else:
+            alternatives_data = alt_response  # fallback, if it's already a dict
+
+
+        print("✅ Type Check Before Return:")
+        print("file_path:", filepath, "| type:", type(filepath))
+        print("ingredients_list:", ingredients_list, "| type:", type(ingredients_list))
+        print("category:", final_category, "| type:", type(final_category))
+        print("description_id:", description_id, "| type:", type(description_id))
+        print("halal_status:", halal_status, "| type:", type(halal_status))
+        print("found_ingredients:", found_ingredients, "| type:", type(found_ingredients))
+        print("alternatives_data:", alternatives_data, "| type:", type(alternatives_data))
+
 
         # Step 10: Return response
         return jsonify({
