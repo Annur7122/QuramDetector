@@ -33,7 +33,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-model = genai.GenerativeModel('gemini-1.5-flash') #using gemini-pro-vision to send images.
+model = genai.GenerativeModel('gemini-2.0-flash') #using gemini-pro-vision to send images.
 DB_URL = "postgresql://quramdb3:cUaVicWuj17LnZDz5a0wCzd6UVzvxZKa@dpg-cvighqqdbo4c73cklfr0-a.oregon-postgres.render.com/quramdb3"
 
 UPLOAD_FOLDER = "uploads"
@@ -79,13 +79,21 @@ def process_images():
 
         # Step 4: Extract ingredients from image using Gemini
         response = model.generate_content([
-            "Ты OCR-ассистент, твоя задача – извлекать состав продукта из текста на изображении.\n\n"
-            "Инструкция:\n"
-            "1. Извлеки **только состав продукта, написанный на русском или казахском языках**. "
-            "Игнорируй текст на всех других языках.\n"
-            "2. Выдели все ингредиенты и добавки отдельно (например: \"вода\", \"сок манго\", \"қышқыл\", \"сукралоза\", \"лимонная кислота\", \"E102\", \"E110\").\n"
-            "3. Если встречаются добавки вида \"E100\", \"E121\" и другие с префиксом E, выделяй их отдельно как индивидуальные элементы.\n"
-            "4. Верни результат строго в формате JSON-массива, без дополнительных комментариев или пояснений.",
+            # "Ты OCR-ассистент, твоя задача – извлекать состав продукта из текста на изображении.\n\n"
+            # "Инструкция:\n"
+            # "1. Извлеки **только состав продукта, написанный на русском или казахском языках**. "
+            # "Игнорируй текст на всех других языках.\n"
+            # "2. Выдели все ингредиенты и добавки отдельно (например: \"вода\", \"сок манго\", \"қышқыл\", \"сукралоза\", \"лимонная кислота\", \"E102\", \"E110\").\n"
+            # "3. Если встречаются добавки вида \"E100\", \"E121\" и другие с префиксом E, выделяй их отдельно как индивидуальные элементы.\n"
+            # "4. Верни результат строго в формате JSON-массива, без дополнительных комментариев или пояснений.",
+            "You are an OCR assistant specializing in extracting product ingredients from images.\n\n"
+                "Task: Extract and format the product composition written in Russian or Kazakh languages from the provided image.\n\n"
+                "Instructions:\n"
+                "1. Identify and extract ONLY the ingredient list written in Russian or Kazakh. Disregard any text in other languages.\n"
+                "2. List each individual ingredient and additive separately. For example: \"вода\", \"сок манго\", \"қышқыл\", \"сукралоза\", \"лимонная кислота\", \"E102\", \"E110\".\n"
+                "3. Treat E-numbers (e.g., \"E100\", \"E121\") as distinct ingredients.\n"
+                "4. Return the extracted ingredients strictly as a JSON array. Do not include any additional comments, explanations, or other text outside the JSON array.\n\n"
+                "Input Image:",
         {
             "mime_type": file.content_type,
             "data": img_b64_str
@@ -93,7 +101,14 @@ def process_images():
         ])
 
         # Step 5: Parsing the response from Gemini
-        extracted_text = response.text.strip()
+        if hasattr(response, "text"):
+            extracted_text = response.text.strip()
+        else:
+            return jsonify({
+                "status": "error",
+                "message": f"Неверный ответ от Gemini: {str(response)}",
+                "code": 500
+            }), 500
 
         # Extract JSON using regex
         match = re.search(r'\[.*\]', extracted_text, re.DOTALL)
@@ -197,14 +212,25 @@ def generate_category_ai(ingredients):
     conn.close()
 
     prompt = (
-        "Ты эксперт по классификации продуктов. Определи категорию продукта по его составу.\n\n"
-        "Существующие категории: " + ", ".join(existing_categories) + ".\n\n"
-        f"Ингредиенты продукта: {', '.join(ingredients)}.\n\n"
-        "Инструкция:\n"
-        "- Если продукт подходит под одну из существующих категорий, выбери её и напиши ТОЛЬКО её название.\n"
-        "- Если ни одна из категорий не подходит, предложи новую краткую категорию (1-2 слова).\n\n"
-        "Ответь строго **ТОЛЬКО названием категории** без пояснений и дополнительных комментариев.\n"
-        "Примеры ответов: сок, газировка, молочный напиток, йогурт."
+        # "Ты эксперт по классификации продуктов. Определи категорию продукта по его составу.\n\n"
+        # "Существующие категории: " + ", ".join(existing_categories) + ".\n\n"
+        # f"Ингредиенты продукта: {', '.join(ingredients)}.\n\n"
+        # "Инструкция:\n"
+        # "- Если продукт подходит под одну из существующих категорий, выбери её и напиши ТОЛЬКО её название.\n"
+        # "- Если ни одна из категорий не подходит, предложи новую краткую категорию (1-2 слова).\n\n"
+        # "Ответь строго **ТОЛЬКО названием категории** без пояснений и дополнительных комментариев.\n"
+        # "Примеры ответов: сок, газировка, молочный напиток, йогурт."
+
+        "Ты эксперт по классификации продуктов, обладающий глубоким знанием о составах различных товаров.\n\n"
+        f"Текущие доступные категории: {', '.join(existing_categories)}.\n\n"
+        f"Анализируемые ингредиенты: {', '.join(ingredients)}.\n\n"
+        "Руководство по классификации:\n"
+        "1. Внимательно изучи представленный состав продукта.\n"
+        "2. Сравни ингредиенты с характеристиками товаров, обычно входящих в каждую из существующих категорий.\n"
+        "3. Если состав продукта однозначно соответствует одной из текущих категорий, выбери наиболее подходящую и верни **ТОЛЬКО** её название.\n"
+        "4. Если состав не имеет явного соответствия ни одной из существующих категорий, предложи новую, максимально краткую и релевантную категорию (не более 2 слов).\n\n"
+        "Формат ответа: **Строго одно название категории**, без каких-либо дополнительных объяснений, рассуждений или примеров.\n"
+        "Примеры ожидаемых ответов: Сок фруктовый, Напиток газированный, Продукт молочный, Йогурт питьевой."
     )
 
     response = model.generate_content(prompt)
