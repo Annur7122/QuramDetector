@@ -114,6 +114,6 @@ def check_halal_status(ingredients, threshold=80):
     if found_haram:
         return {"status": "haram", "found_ingredients": list(found_haram)}
     elif found_suspected or found_general_suspected:
-        return {"status": "Подозрительно", "found_ingredients": list(found_suspected | found_general_suspected)}
+        return {"status": "suspect", "found_ingredients": list(found_suspected | found_general_suspected)}
     else:
         return {"status": "halal", "found_ingredients": []}
