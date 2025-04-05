@@ -251,28 +251,28 @@ def insert_category(category_name):
     return category_id
 
 
-def insert_product(ingredients, image_path, halal_status, description_id, found_ingredients):
-    """Inserts the product details into the database."""
-    conn = psycopg2.connect(DB_URL)
-    cur = conn.cursor()
+# def insert_product(ingredients, image_path, halal_status, description_id, found_ingredients):
+#     """Inserts the product details into the database."""
+#     conn = psycopg2.connect(DB_URL)
+#     cur = conn.cursor()
 
-    ingredients_str = ", ".join(ingredients)
-    haram_ingredients_str = ", ".join(found_ingredients) if found_ingredients else None
+#     ingredients_str = ", ".join(ingredients)
+#     haram_ingredients_str = ", ".join(found_ingredients) if found_ingredients else None
 
-    # Ensure description_id is valid
-    if description_id is None:
-        raise ValueError("description_id is None, cannot insert into database.")
+#     # Ensure description_id is valid
+#     if description_id is None:
+#         raise ValueError("description_id is None, cannot insert into database.")
 
-    cur.execute(
-        """
-        INSERT INTO product (name, image, ingredients, status, description_id, haram_ingredients)
-        VALUES (%s, %s, %s, %s, %s, %s)
-        """,
-        ("Scanned Product", image_path, ingredients_str, halal_status, description_id, haram_ingredients_str)
-    )
+#     cur.execute(
+#         """
+#         INSERT INTO product (name, image, ingredients, status, description_id, haram_ingredients)
+#         VALUES (%s, %s, %s, %s, %s, %s)
+#         """,
+#         ("Scanned Product", image_path, ingredients_str, halal_status, description_id, haram_ingredients_str)
+#     )
 
-    conn.commit()
-    conn.close()
+#     conn.commit()
+#     conn.close()
 
 @routes.route("/scan-history", methods=["GET"])
 def get_scan_history():
