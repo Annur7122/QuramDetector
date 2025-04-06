@@ -331,7 +331,7 @@ def get_scan(scan_id):
     scan = ScanHistory.query.get_or_404(scan_id)
 
     return jsonify({
-        "id": scan.id,
+        "scan_id": scan.id,
         "user_id": scan.user_id,
         "product_name": scan.product_name,
         "ingredients": scan.ingredients,
