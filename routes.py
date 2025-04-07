@@ -311,7 +311,7 @@ def get_scan_history():
     scans = ScanHistory.query.filter_by(user_id=get_jwt_identity()).order_by(ScanHistory.scan_date.desc()).all()
 
     scan_data = [{
-        "id": scan.id,
+        "scan_id": scan.id,
         "user_id": scan.user_id,
         "product_name": scan.product_name,
         "ingredients": scan.ingredients,
