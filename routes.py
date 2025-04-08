@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 import os
 import json
 from check import check_halal_status
+from gcs_setting import upload_to_gcs
 from image_processor import extract_text_from_image
 from models import db, Product, Description, Review, User, Favourite, ScanHistory
 from flask_jwt_extended import jwt_required,get_jwt_identity
@@ -58,6 +59,9 @@ def process_images():
         return jsonify({"status": "error", "message": "Файл не найден", "code": 400}), 400
 
     file = request.files['file']
+    image_url = upload_to_gcs(file)
+    file.stream.seek(0)
+    print(image_url)
 
     if file.filename == '':
         return jsonify({"status": "error", "message": "Файл не выбран", "code": 400}), 400
@@ -149,7 +153,7 @@ def process_images():
         new_scan = ScanHistory(
             user_id=get_jwt_identity(),
             product_name=final_category,
-            image=filepath,
+            image=image_url,
             ingredients=", ".join(ingredients_list),  # Список ингредиентов как текст
             scan_date=datetime.utcnow(),
             status=halal_status,
@@ -177,7 +181,7 @@ def process_images():
             "status": "success",
             "message": "Файл успешно загружен",
             "data": {
-                "file_path": filepath,
+                "file_path": image_url,
                 "extracted_text": ingredients_list,
                 "category": final_category,
                 "description_id": description_id,
