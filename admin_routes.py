@@ -6,7 +6,6 @@ admin_routes = Blueprint("admin_routes", __name__)
 
 # 📌 1. Получить данные по scan_id для редактирования
 @admin_routes.route("/admin/get-scan/<int:scan_id>", methods=["GET"])
-@admin_required
 def get_scan(scan_id):
     scan = ScanHistory.query.get_or_404(scan_id)
 
@@ -69,6 +68,7 @@ def get_scan_products():
     scan_list = [{
         "scan_id": scan.id,
         "user_id": scan.user_id,
+        "image": scan.image,
         "product_name": scan.product_name or "Неизвестно",
         "status": scan.status,
         "is_processed": scan.is_processed

@@ -5,7 +5,7 @@ from flask_cors import CORS
 from flask_migrate import Migrate
 
 from admin_routes import admin_routes
-# from gcs_setting import gcs_routes
+from gcs_setting import gcs_routes
 from models import db, User
 from routes import routes
 from flask_jwt_extended import JWTManager
@@ -31,7 +31,7 @@ app.register_blueprint(admin_routes)
 
 from notification_routes import notification_routes
 app.register_blueprint(notification_routes, url_prefix='/notifications')
-# app.register_blueprint(gcs_routes)
+app.register_blueprint(gcs_routes)
 
 db.init_app(app)
 migrate = Migrate(app, db)
@@ -57,20 +57,6 @@ def check_auth():
         print("❌ Ошибка при проверке JWT-токена")
         traceback.print_exc()
         return jsonify({"error": "Необходима авторизация"}), 401
-
-def admin_required(fn):
-    """Декоратор для ограничения доступа к эндпоинтам только для админов"""
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        current_user_id = get_jwt_identity()  # Получаем ID пользователя из JWT
-        user = User.query.get(current_user_id)  # Ищем пользователя в базе
-
-        if not user or user.authority != "admin":
-            return jsonify({"status": "error", "message": "Доступ запрещен"}), 403
-
-        return fn(*args, **kwargs)  # Выполняем исходную функцию, если админ
-    return wrapper
-
 
 
 if __name__ == '__main__':
