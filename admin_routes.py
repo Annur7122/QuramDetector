@@ -68,6 +68,7 @@ def get_scan_products():
     scan_list = [{
         "scan_id": scan.id,
         "user_id": scan.user_id,
+        "image": scan.image,
         "product_name": scan.product_name or "Неизвестно",
         "status": scan.status,
         "is_processed": scan.is_processed
