@@ -35,7 +35,7 @@ def allowed_file(filename):
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-pro-latest') #using gemini-pro-vision to send images.
 DB_URL = "postgresql://quramdb3:cUaVicWuj17LnZDz5a0wCzd6UVzvxZKa@dpg-cvighqqdbo4c73cklfr0-a.oregon-postgres.render.com/quramdb3"
-# DB_URL = "postgresql://postgres:root@localhost:5433/postgres"
+
 
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
@@ -672,4 +672,61 @@ def get_scans():
         for scan in scans
     ])
 
+from PIL import Image
+import uuid
+import io
+from ultralytics import YOLO
 
+logo_recognizer = YOLO('/Users/mukhtarrabayev/Desktop/QuramDetect/QuramDetector/best.pt')
+
+# Whitelist of known halal companies
+HALAL_COMPANIES = {'alel', 'balqymyz', 'flint', 'grizzly', 'jacobs'}
+
+@routes.route("/process-logo", methods=["POST"])
+def process_logo():
+    if "file" not in request.files:
+        return jsonify({"status": "error", "message": "No file uploaded", "code": 400}), 400
+
+    file = request.files["file"]
+
+    # Open the image from the file stream without saving it
+    image = Image.open(file.stream)
+
+    # Save the image temporarily
+    temp_filename = f"{uuid.uuid4().hex}.png"
+    temp_filepath = os.path.join("temp", temp_filename)
+    os.makedirs(os.path.dirname(temp_filepath), exist_ok=True)
+    image.save(temp_filepath)
+
+    # Convert image to Base64 to send in the response
+    image_bytes = io.BytesIO()
+    image.save(image_bytes, format='PNG')
+    image_bytes.seek(0)
+    image_b64 = base64.b64encode(image_bytes.getvalue()).decode('utf-8')
+
+    # Predict using YOLOv8 with the saved image file
+    results = logo_recognizer.predict(source=temp_filepath, conf=0.25)  # Use file path here
+    detected_names = set()
+
+    for result in results:
+        for box in result.boxes:
+            cls_id = int(box.cls[0])
+            name = logo_recognizer.names[cls_id].lower()
+            detected_names.add(name)
+
+    matched_company = HALAL_COMPANIES.intersection(detected_names)
+
+    if matched_company:
+        status = f"{matched_company.pop().capitalize()} is on our whitelist and has 100% halal production"
+    else:
+        status = "We do not have this company in our whitelist"
+
+    # Clean up the temporary file
+    os.remove(temp_filepath)
+
+    # Return JSON response
+    return jsonify({
+        "status": "success",
+        "company_logo": image_b64,  # Base64 encoded image
+        "status_message": status
+    }), 200
