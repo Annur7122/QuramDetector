@@ -10,7 +10,6 @@ import os
 import json
 from check import check_halal_status
 from gcs_setting import upload_to_gcs
-from image_processor import extract_text_from_image
 from models import db, Product, Description, Review, User, Favourite, ScanHistory
 from flask_jwt_extended import jwt_required,get_jwt_identity
 import base64
@@ -36,6 +35,7 @@ def allowed_file(filename):
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-pro-latest') #using gemini-pro-vision to send images.
 DB_URL = "postgresql://quramdb3:cUaVicWuj17LnZDz5a0wCzd6UVzvxZKa@dpg-cvighqqdbo4c73cklfr0-a.oregon-postgres.render.com/quramdb3"
+# DB_URL = "postgresql://postgres:root@localhost:5433/postgres"
 
 
 UPLOAD_FOLDER = "uploads"
@@ -681,7 +681,7 @@ import uuid
 import io
 from ultralytics import YOLO
 
-logo_recognizer = YOLO('/Users/mukhtarrabayev/Desktop/QuramDetect/QuramDetector/best.pt')
+logo_recognizer = YOLO('logo_recognizer/best.pt')
 
 # Whitelist of known halal companies
 HALAL_COMPANIES = {'alel', 'balqymyz', 'flint', 'grizzly', 'jacobs'}
