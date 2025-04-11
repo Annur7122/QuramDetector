@@ -682,7 +682,14 @@ import io
 from ultralytics import YOLO
 
 # logo_recognizer = YOLO('logo_recognizer/best.pt')
-logo_recognizer = YOLO('https://storage.googleapis.com/quram_product_photo/best.pt')
+# logo_recognizer = YOLO('https://storage.googleapis.com/quram_product_photo/best.pt')
+logo_recognizer = None
+
+def get_logo_model():
+    global logo_recognizer
+    if logo_recognizer is None:
+        logo_recognizer = YOLO('https://storage.googleapis.com/quram_product_photo/best.pt')
+    return logo_recognizer
 
 # Whitelist of known halal companies
 HALAL_COMPANIES = {'alel', 'balqymyz', 'flint', 'grizzly', 'jacobs'}
@@ -709,14 +716,18 @@ def process_logo():
     image_bytes.seek(0)
     image_b64 = base64.b64encode(image_bytes.getvalue()).decode('utf-8')
 
+    logo_rec = get_logo_model()
+
+
+
     # Predict using YOLOv8 with the saved image file
-    results = logo_recognizer.predict(source=temp_filepath, conf=0.25)  # Use file path here
+    results = logo_rec.predict(source=temp_filepath, conf=0.25)  # Use file path here
     detected_names = set()
 
     for result in results:
         for box in result.boxes:
             cls_id = int(box.cls[0])
-            name = logo_recognizer.names[cls_id].lower()
+            name = logo_rec.names[cls_id].lower()
             detected_names.add(name)
 
     matched_company = HALAL_COMPANIES.intersection(detected_names)
@@ -736,14 +747,3 @@ def process_logo():
         "status_message": status
     }), 200
 
-@routes.route("/debug-logo-path", methods=["GET"])
-def debug_logo_path():
-    try:
-        cwd = os.getcwd()
-        logo_dir = os.listdir("logo_recognizer")
-        return jsonify({
-            "cwd": cwd,
-            "files_in_logo_recognizer": logo_dir
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
