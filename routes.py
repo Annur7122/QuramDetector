@@ -681,7 +681,8 @@ import uuid
 import io
 from ultralytics import YOLO
 
-logo_recognizer = YOLO('logo_recognizer/best.pt')
+# logo_recognizer = YOLO('logo_recognizer/best.pt')
+logo_recognizer = YOLO('https://storage.googleapis.com/quram_product_photo/best.pt')
 
 # Whitelist of known halal companies
 HALAL_COMPANIES = {'alel', 'balqymyz', 'flint', 'grizzly', 'jacobs'}
