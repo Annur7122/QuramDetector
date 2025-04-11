@@ -734,3 +734,15 @@ def process_logo():
         "company_logo": image_b64,  # Base64 encoded image
         "status_message": status
     }), 200
+
+@routes.route("/debug-logo-path", methods=["GET"])
+def debug_logo_path():
+    try:
+        cwd = os.getcwd()
+        logo_dir = os.listdir("logo_recognizer")
+        return jsonify({
+            "cwd": cwd,
+            "files_in_logo_recognizer": logo_dir
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
