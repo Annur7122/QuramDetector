@@ -2,7 +2,7 @@ import base64
 import os
 import uuid
 from io import BytesIO
-from tkinter import Image
+from PIL import Image
 
 from flask import Blueprint, request, jsonify
 from google.cloud import storage
