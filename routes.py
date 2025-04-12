@@ -690,7 +690,7 @@ logo_recognizer = None
 def get_logo_model():
     global logo_recognizer
     if logo_recognizer is None:
-        logo_recognizer = YOLO('logo_recognizer/best.pt')  # Load locally stored model
+        logo_recognizer = YOLO('https://storage.googleapis.com/quram_product_photo/best.pt')  # Load locally stored model
         logo_recognizer.model.fuse = lambda *args, **kwargs: logo_recognizer.model  # Disable fuse if needed
     return logo_recognizer
 
