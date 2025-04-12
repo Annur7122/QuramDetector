@@ -680,15 +680,18 @@ from PIL import Image
 import uuid
 import io
 from ultralytics import YOLO
+import psutil
 
 # logo_recognizer = YOLO('logo_recognizer/best.pt')
 # logo_recognizer = YOLO('https://storage.googleapis.com/quram_product_photo/best.pt')
+# Global variable to store YOLO model
 logo_recognizer = None
 
 def get_logo_model():
     global logo_recognizer
     if logo_recognizer is None:
-        logo_recognizer = YOLO('https://storage.googleapis.com/quram_product_photo/best.pt')
+        logo_recognizer = YOLO('logo_recognizer/best.pt')  # Load locally stored model
+        logo_recognizer.model.fuse = lambda *args, **kwargs: logo_recognizer.model  # Disable fuse if needed
     return logo_recognizer
 
 # Whitelist of known halal companies
@@ -696,6 +699,10 @@ HALAL_COMPANIES = {'alel', 'balqymyz', 'flint', 'grizzly', 'jacobs'}
 
 @routes.route("/process-logo", methods=["POST"])
 def process_logo():
+    # Memory check before processing the logo
+    process = psutil.Process(os.getpid())
+    initial_memory = process.memory_info().rss / 1024**2  # Memory before processing (in MB)
+
     if "file" not in request.files:
         return jsonify({"status": "error", "message": "No file uploaded", "code": 400}), 400
 
@@ -716,9 +723,8 @@ def process_logo():
     image_bytes.seek(0)
     image_b64 = base64.b64encode(image_bytes.getvalue()).decode('utf-8')
 
+    # Get YOLO model
     logo_rec = get_logo_model()
-
-
 
     # Predict using YOLOv8 with the saved image file
     results = logo_rec.predict(source=temp_filepath, conf=0.25)  # Use file path here
@@ -740,10 +746,22 @@ def process_logo():
     # Clean up the temporary file
     os.remove(temp_filepath)
 
-    # Return JSON response
+    # Memory check after processing the logo
+    final_memory = process.memory_info().rss / 1024**2  # Memory after processing (in MB)
+
+    # Return JSON response along with memory usage
     return jsonify({
         "status": "success",
         "company_logo": image_b64,  # Base64 encoded image
-        "status_message": status
+        "status_message": status,
+        "initial_memory_mb": round(initial_memory, 2),
+        "final_memory_mb": round(final_memory, 2)
     }), 200
+
+@routes.route("/debug-memory", methods=["GET"])
+def memory_check():
+    import psutil
+    process = psutil.Process(os.getpid())
+    mem = process.memory_info().rss / 1024**2  # in MB
+    return jsonify({"memory_usage_mb": round(mem, 2)})
 
