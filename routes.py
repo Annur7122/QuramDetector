@@ -634,6 +634,7 @@ def get_reviews(scan_id):
         {
             "id": review.id,
             "user_id": review.user_id,
+            "user_name": review.user.name if review.user else None,
             "review_description": review.review_description,
             "stars": review.stars
         }
@@ -654,12 +655,39 @@ def get_latest_reviews():
         {
             "id": review.id,
             "user_id": review.user_id,
+            "user_name": review.user.name if review.user else None,
             "review_description": review.review_description,
             "stars": review.stars
         }
         for review in reviews
     ])
 
+@routes.route('/scans/<int:scan_id>/reviews', methods=['POST'])
+def add_review_by_id(scan_id):
+    data = request.get_json()
+    user_id = get_jwt_identity()
+    review_description = data.get("review_description")
+    stars = data.get("stars")
+
+    # Проверка, существует ли скан с таким ID
+    scan = ScanHistory.query.get(scan_id)
+    if not scan:
+        return jsonify({"error": "Scan not found"}), 404
+
+    if not user_id or not review_description or not stars:
+        return jsonify({"error": "Missing fields"}), 400
+
+    # Создание нового отзыва
+    new_review = Review(
+        scan_history_id=scan_id,
+        user_id=user_id,
+        review_description=review_description,
+        stars=stars
+    )
+    db.session.add(new_review)
+    db.session.commit()
+
+    return jsonify({"message": "Review added successfully", "scan_id": scan_id}), 201
 
 @routes.route('/scans', methods=['GET'])
 def get_scans():
