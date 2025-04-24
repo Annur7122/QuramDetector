@@ -45,16 +45,11 @@ class Product(db.Model):
     suspect_ingredients = db.Column(db.Text, nullable=True)
 
     reviews = db.relationship('Review', backref='product', lazy=True)
-    scan_result = db.relationship('ScanResult', backref='product', uselist=False)
 
     def set_image_url(self, url):
         self.image = url
         db.session.commit()
-# Результат проверки продукта
-class ScanResult(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), unique=True, nullable=False)
-    status = db.Column(db.String(10), nullable=False)  # ✅ / ⚠️ / ❌
+
 
 # История проверок
 class ScanHistory(db.Model):
@@ -105,10 +100,7 @@ class BaseModel(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-class Ingredient(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), unique=True, nullable=False)
-    type = db.Column(db.String(10), nullable=False)  # 'halal' или 'haram'
+
 
 
 
