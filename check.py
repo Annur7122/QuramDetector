@@ -1392,8 +1392,8 @@ def check_halal_status(ingredients):
 
     # Step 3: Final classification
     if found_haram:
-        return {"status": "haram", "found_ingredients": list(found_haram)}
+        return {"status": "таза емес", "found_ingredients": list(found_haram)}
     elif found_suspected:
-        return {"status": "suspect", "found_ingredients": list(found_suspected)}
+        return {"status": "күмәнді", "found_ingredients": list(found_suspected)}
     else:
-        return {"status": "halal", "found_ingredients": []}
+        return {"status": "таза", "found_ingredients": []}
