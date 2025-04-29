@@ -5,7 +5,7 @@ services:
       - "5000:5000"
     environment:
       - FLASK_ENV=development
-      - DATABASE_URL=postgresql://quramdb3:ChHsZ3VbMRfzlQLxJ91uod3Rc96bxqqy@dpg-d0766ac9c44c739nm8eg-a.oregon-postgres.render.com/quramdb3_q4d1
+      - DATABASE_URL=postgresql://postgres:password@db:5432/mydatabase
       - JWT_SECRET_KEY=your_secret_key
     volumes:
       - .:/app
