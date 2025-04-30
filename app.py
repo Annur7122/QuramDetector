@@ -20,7 +20,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://quramdb3:ChHsZ3VbMRfzlQLxJ91uod3Rc96bxqqy@dpg-d0766ac9c44c739nm8eg-a.oregon-postgres.render.com/quramdb3_q4d1'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://quramdb:8EseRnDEm703Y9M2y1U6rdrujKkDXuiq@dpg-d08uspidbo4c73ebchf0-a.oregon-postgres.render.com/quramdb'
 # app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:root@localhost:5433/postgres"
 app.debug = True
 
