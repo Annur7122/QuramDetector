@@ -16,11 +16,12 @@ from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
 from functools import wraps
 
 
+
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://quramdb:8EseRnDEm703Y9M2y1U6rdrujKkDXuiq@dpg-d08uspidbo4c73ebchf0-a.oregon-postgres.render.com/quramdb?sslmode=require'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://quramdb:8EseRnDEm703Y9M2y1U6rdrujKkDXuiq@dpg-d08uspidbo4c73ebchf0-a.oregon-postgres.render.com/quramdb'
 # app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:root@localhost:5433/postgres"
 app.debug = True
 
