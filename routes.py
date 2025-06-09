@@ -34,7 +34,7 @@ def allowed_file(filename):
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-pro-latest') #using gemini-pro-vision to send images.
-DB_URL = "postgresql://quramdb:8EseRnDEm703Y9M2y1U6rdrujKkDXuiq@dpg-d08uspidbo4c73ebchf0-a.oregon-postgres.render.com/quramdb"
+DB_URL = "postgresql://quramdb:iKk2iYOxfLo1GZmKvaRpEPVgWjPfukrt@dpg-d139uuc9c44c7392ir3g-a.oregon-postgres.render.com/quramdb_nwwd"
 # DB_URL = "postgresql://postgres:root@localhost:5433/postgres"
 
 
